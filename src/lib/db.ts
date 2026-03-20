@@ -1,22 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+type PrismaGlobal = typeof globalThis & { prisma?: PrismaClient };
 
-const databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+const globalForPrisma = globalThis as PrismaGlobal;
 
-const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    datasources: {
-      db: {
-        url: databaseUrl
-      }
-    }
-  });
+export const db = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = db;
 }
 
-export default prisma;
-export { prisma };
+export default db;
