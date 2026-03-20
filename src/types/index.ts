@@ -1,34 +1,27 @@
 export type Feature = {
   id: string;
-  title?: string | null;
-  summary?: string | null;
-  icon?: string | null;
+  title: string;
+  subtitle: string;
+  icon: string;
+  order: number;
 };
 
-export type PricingTier = {
+export type Plan = {
   id: string;
-  name?: string | null;
-  pricePerMonth?: number | null;
-  currency?: string | null;
-  features?: string[] | null;
-  stripePriceId?: string | null;
-  isCustom?: boolean | null;
+  name: string;
+  price_monthly?: number | null;
+  billing_description?: string | null;
+  features: string[];
+  is_custom: boolean;
 };
 
 export type Lead = {
   id: string;
-  email?: string | null;
-  name?: string | null;
-  company?: string | null;
-  planInterest?: string | null;
-  createdAt?: string | Date | null;
-};
-
-export type AdminUser = {
-  id: string;
   email: string;
   name?: string | null;
-  role?: string | null;
-  passwordHash: string;
-  createdAt?: string | Date | null;
+  company?: string | null;
+  message?: string | null;
+  source?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

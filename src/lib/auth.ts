@@ -1,14 +1,14 @@
-import bcrypt from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 
 const JWT_SECRET: Secret = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcryptjs.hash(password, 10);
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  return bcryptjs.compare(password, hash);
 }
 
 export function signToken(payload: object): string {

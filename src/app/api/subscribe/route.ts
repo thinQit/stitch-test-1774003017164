@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import db from '@/lib/db';
 
-const schema = z.object({
+const subscribeSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
+  name: z.string().optional(),
+  source: z.string().optional()
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const data = schema.parse(await request.json());
+    const body = await request.json();
+    const parsed = subscribeSchema.parse(body);
+
     const lead = await db.lead.create({
       data: {
-        email: data.email,
-        name: data.name,
-        company: data.company ?? null,
-        planInterest: data.planInterest ?? null
+        email: parsed.email,
+        name: parsed.name ?? null,
+        source: parsed.source ?? 'newsletter'
       }
     });
+
     return NextResponse.json({
       success: true,
-      data: { id: lead.id, email: lead.email, createdAt: lead.createdAt.toISOString() }
-    }, { status: 201 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Invalid request';
-    return NextResponse.json({ success: false, error: message }, { status: 400 });
+      data: { success: true, leadId: lead.id, message: 'Subscribed.' }
+    });
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Invalid email' }, { status: 400 });
   }
 }

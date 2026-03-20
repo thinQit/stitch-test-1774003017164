@@ -1,50 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/lib/db';
-import { assertAdmin } from '@/lib/admin';
-
-const schema = z.object({
-  email: z.string().email(),
-  name: z.string().optional(),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
-});
+import db from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    assertAdmin(request);
-    const leads = await db.lead.findMany({ orderBy: { createdAt: 'desc' } });
-    const data = leads.map((lead) => ({
-      ...lead,
-      createdAt: lead.createdAt.toISOString()
-    }));
-    return NextResponse.json({ success: true, data });
-  } catch (error: unknown) {
-    const status = (error as Error & { status?: number }).status ?? 401;
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    return NextResponse.json({ success: false, error: message }, { status });
-  }
-}
+    const limit = Number(request.nextUrl.searchParams.get('limit') || 50);
+    const offset = Number(request.nextUrl.searchParams.get('offset') || 0);
+    const source = request.nextUrl.searchParams.get('source') || undefined;
 
-export async function POST(request: NextRequest) {
-  try {
-    assertAdmin(request);
-    const data = schema.parse(await request.json());
-    const lead = await db.lead.create({
-      data: {
-        email: data.email,
-        name: data.name ?? null,
-        company: data.company ?? null,
-        planInterest: data.planInterest ?? null
-      }
+    const leads = await db.lead.findMany({
+      where: source ? { source } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset
     });
-    return NextResponse.json({
-      success: true,
-      data: { ...lead, createdAt: lead.createdAt.toISOString() }
-    }, { status: 201 });
-  } catch (error: unknown) {
-    const status = (error as Error & { status?: number }).status ?? 400;
-    const message = error instanceof Error ? error.message : 'Invalid request';
-    return NextResponse.json({ success: false, error: message }, { status });
+
+    return NextResponse.json({ success: true, data: { leads } });
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Failed to load leads' }, { status: 500 });
   }
 }

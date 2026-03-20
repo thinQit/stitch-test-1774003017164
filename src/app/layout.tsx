@@ -1,24 +1,25 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Manrope } from 'next/font/google';
+import { Manrope, Inter } from 'next/font/google';
 import Navigation from '@/components/layout/Navigation';
+import AuthProvider from '@/providers/AuthProvider';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'ProjectFlow',
-  description: 'ProjectFlow — a full-stack Next.js + TypeScript landing site and lightweight admin dashboard for an AI-powered project management SaaS. Includes a responsive Tailwind CSS design matching the approved wireframe: gradient Hero, three feature cards (Smart Scheduling, Automated Reporting, Team Insights), a 3-tier Pricing section (Starter $29/mo, Pro $79/mo, Enterprise custom), newsletter/lead capture, and a Footer. Modern component architecture, TypeScript types, server-side API endpoints (health, features, pricing tiers, lead capture, checkout), and SSG/ISR optimizations for performance.'
+  description: 'ProjectFlow — a full-stack Next.js + TypeScript SaaS landing site and lightweight admin backend for an AI-powered project management product. Includes a pixel-matching landing page (hero with gradient, feature cards, pricing tiers, footer) built with Tailwind CSS and modern component architecture, plus APIs for health, newsletter subscribe, contact leads, and CRUD for pricing plans and leads to support a simple admin dashboard.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={`${inter.variable} ${manrope.variable} font-sans antialiased`}>
-        <div className="min-h-screen bg-background">
+    <html lang="en" className={`${manrope.variable} ${inter.variable}`}>
+      <body className="min-h-screen font-sans">
+        <AuthProvider>
           <Navigation />
-          <main>{children}</main>
-        </div>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

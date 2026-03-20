@@ -1,16 +1,16 @@
 # ProjectFlow
 
-ProjectFlow is a full-stack Next.js + TypeScript landing site and lightweight admin dashboard for an AI-powered project management SaaS. It includes a responsive Tailwind CSS design, structured API routes, Prisma ORM with SQLite, and a simple admin token gate for pricing and lead management.
+ProjectFlow is a full-stack Next.js + TypeScript SaaS landing site and lightweight admin backend for an AI-powered project management product. It includes a pixel-matching landing page, pricing pages, contact capture, and admin CRUD for plans and leads.
 
 ## Features
-- Gradient hero, feature cards, pricing tiers, and newsletter capture
-- Public APIs for health, features, tiers, lead capture, and checkout
-- Admin dashboard for pricing tiers and leads (token protected)
-- Prisma + SQLite for local development
-- Tailwind CSS design system with reusable UI components
+- Hero landing page with gradient, feature cards, pricing tiers, and footer
+- Newsletter subscribe and enterprise contact capture
+- Admin dashboard for managing pricing plans and viewing leads
+- Health check API and structured data endpoints
+- JWT-based admin authentication
 
-## Getting Started
-1. Copy environment template:
+## Setup
+1. Copy environment variables:
    ```bash
    cp .env.example .env
    ```
@@ -22,36 +22,25 @@ ProjectFlow is a full-stack Next.js + TypeScript landing site and lightweight ad
    ```bash
    npx prisma generate
    ```
-4. Run the dev server:
+4. Run the app:
    ```bash
    npm run dev
    ```
 
-## Environment Variables
-- `DATABASE_URL` - SQLite connection string (e.g. `file:./dev.db`)
-- `ADMIN_TOKEN` - Token for admin API routes
-- `NEXT_PUBLIC_APP_URL` - Public URL for CORS or analytics
-- `STRIPE_SECRET_KEY` - Placeholder for future Stripe integration
-
 ## API Endpoints
-- `GET /api/health`
-- `GET /api/features`
-- `GET /api/tiers`
-- `POST /api/subscribe`
-- `POST /api/checkout`
-- `GET /api/admin/tiers`
-- `POST /api/admin/tiers`
-- `PUT /api/admin/tiers/:id`
-- `DELETE /api/admin/tiers/:id`
-- `GET /api/admin/leads`
+- `GET /api/health` — health check
+- `GET /api/plans` — list pricing plans
+- `POST /api/plans` — create plan (auth)
+- `PUT /api/plans/:id` — update plan (auth)
+- `DELETE /api/plans/:id` — delete plan (auth)
+- `GET /api/features` — list feature cards
+- `POST /api/subscribe` — newsletter signup
+- `POST /api/contact` — enterprise contact
+- `GET /api/leads` — list leads (auth)
+- `POST /api/auth/login` — admin login
+- `POST /api/auth/register` — admin registration
+- `GET /api/auth/me` — current admin user
 
-## Admin Access
-Use the token stored in `ADMIN_TOKEN` and enter it in the Admin dashboard. The token must be sent as a `Bearer` token in the `Authorization` header.
-
-## Testing
-```bash
-npm run test
-```
-
-## License
-© 2026 ProjectFlow
+## Notes
+- Prisma uses SQLite for local development.
+- Set `JWT_SECRET` in `.env` for auth.

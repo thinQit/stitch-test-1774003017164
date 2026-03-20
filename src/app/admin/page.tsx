@@ -1,262 +1,339 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { formatDate } from '@/lib/utils';
-import { Lead, PricingTier } from '@/types';
+import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
-import Card, { CardContent, CardHeader } from '@/components/ui/Card';
+import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
+import Spinner from '@/components/ui/Spinner';
+import { api } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import type { Lead, Plan } from '@/types';
+import { useAuth } from '@/providers/AuthProvider';
 
-interface TierFormState {
-  name: string;
-  pricePerMonth: string;
-  currency: string;
-  features: string;
-  isCustom: boolean;
-}
+const emptyPlanForm = { name: '', price_monthly: '', billing_description: '', features: '', is_custom: false };
+
+type PlanFormState = typeof emptyPlanForm;
 
 export default function AdminPage() {
-  const [token, setToken] = useState('');
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const { user, login, logout, loading: authLoading } = useAuth();
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [status, setStatus] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<TierFormState>({
-    name: '',
-    pricePerMonth: '',
-    currency: 'USD',
-    features: '',
-    isCustom: false
-  });
+  const [form, setForm] = useState<PlanFormState>(emptyPlanForm);
+  const [authForm, setAuthForm] = useState({ email: '', password: '' });
+  const [authError, setAuthError] = useState('');
 
-  useEffect(() => {
-    const stored = localStorage.getItem('adminToken');
-    if (stored) {
-      setToken(stored);
-    }
-  }, []);
-
-  const fetchWithAuth = async <T,>(url: string, options?: RequestInit): Promise<T | null> => {
-    const headers: HeadersInit = {
-      ...(options?.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-    const response = await fetch(url, { ...options, headers });
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || 'Request failed');
-    }
-    const data = (await response.json()) as T;
-    return data ?? null;
-  };
+  const featureList = useMemo(
+    () => form.features.split(',').map((item) => item.trim()).filter(Boolean),
+    [form.features]
+  );
 
   const loadData = async () => {
-    if (!token) {
-      setError('Admin token required to load data.');
-      return;
-    }
     setLoading(true);
     setError(null);
-    setStatus('');
     try {
-      const [tiersData, leadsData] = await Promise.all([
-        fetchWithAuth<PricingTier[]>('/api/admin/tiers'),
-        fetchWithAuth<Lead[]>('/api/admin/leads')
+      const [plansResponse, leadsResponse] = await Promise.all([
+        api.get<{ plans: Plan[] }>('/api/plans'),
+        api.get<{ leads: Lead[] }>('/api/leads')
       ]);
-      setTiers(Array.isArray(tiersData) ? tiersData : []);
-      setLeads(Array.isArray(leadsData) ? leadsData : []);
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Unable to load admin data');
+      setPlans(plansResponse?.plans || []);
+      setLeads(leadsResponse?.leads || []);
+    } catch (_error) {
+      setError('Unable to load admin data.');
+      setPlans([]);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (token) {
-      localStorage.setItem('adminToken', token);
+    if (user) {
       loadData();
     }
-  }, [token]);
+  }, [user]);
 
-  const handleCreateTier = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCreatePlan = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!token) {
-      setError('Admin token required to create tiers.');
-      return;
-    }
-    setError(null);
+    const priceValue = form.price_monthly === '' ? null : Number(form.price_monthly);
+    const payload = {
+      name: form.name,
+      price_monthly: form.is_custom ? null : priceValue,
+      billing_description: form.billing_description,
+      features: featureList,
+      is_custom: form.is_custom
+    };
     try {
-      const payload = {
-        name: form.name,
-        pricePerMonth: form.pricePerMonth ? Number(form.pricePerMonth) : null,
-        currency: form.currency,
-        features: form.features
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-        isCustom: form.isCustom
-      };
-      await fetchWithAuth<PricingTier>('/api/admin/tiers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      await api.post('/api/plans', payload);
+      setForm(emptyPlanForm);
+      loadData();
+    } catch (_error) {
+      setError('Unable to create plan.');
+    }
+  };
+
+  const handleUpdatePlan = async (plan: Plan) => {
+    try {
+      await api.put(`/api/plans/${plan.id}`, {
+        name: plan.name,
+        price_monthly: plan.price_monthly,
+        billing_description: plan.billing_description,
+        features: plan.features,
+        is_custom: plan.is_custom
       });
-      setForm({ name: '', pricePerMonth: '', currency: 'USD', features: '', isCustom: false });
-      setStatus('Tier created successfully.');
       loadData();
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Unable to create tier');
+    } catch (_error) {
+      setError('Unable to update plan.');
     }
   };
 
-  const handleDeleteTier = async (id: string) => {
-    if (!token) {
-      setError('Admin token required to delete tiers.');
-      return;
-    }
-    setError(null);
+  const handleDeletePlan = async (planId: string) => {
     try {
-      await fetchWithAuth<unknown>(`/api/admin/tiers/${id}`, { method: 'DELETE' });
-      setStatus('Tier deleted.');
+      await api.delete(`/api/plans/${planId}`);
       loadData();
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Unable to delete tier');
+    } catch (_error) {
+      setError('Unable to delete plan.');
     }
   };
 
-  const handleCopyCsv = async () => {
-    const csv = [
-      'name,email,company,planInterest,createdAt',
-      ...leads.map((lead) =>
-        [lead.name, lead.email, lead.company, lead.planInterest, lead.createdAt]
-          .map((value) => `"${value ?? ''}"`)
-          .join(',')
-      )
-    ].join('\n');
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(csv);
-      setStatus('Leads copied to clipboard.');
+  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthError('');
+    try {
+      await login(authForm.email, authForm.password);
+    } catch (_error) {
+      setAuthError('Invalid credentials.');
     }
   };
+
+  if (authLoading) {
+    return (
+      <main className="mx-auto flex max-w-6xl justify-center px-6 py-20">
+        <Spinner />
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-md px-6 py-16">
+        <Card>
+          <h1 className="text-2xl font-semibold">Admin Sign In</h1>
+          <p className="mt-2 text-sm text-slate-600">Use your admin credentials to manage plans and leads.</p>
+          <form onSubmit={handleAuthSubmit} className="mt-6 space-y-4">
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              required
+              value={authForm.email}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setAuthForm((prev) => ({ ...prev, email: event.target.value }))
+              }
+            />
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              required
+              value={authForm.password}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setAuthForm((prev) => ({ ...prev, password: event.target.value }))
+              }
+            />
+            <Button type="submit">Sign in</Button>
+            {authError && <p className="text-sm text-error">{authError}</p>}
+          </form>
+        </Card>
+      </main>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16 lg:px-6">
-      <h1 className="text-4xl font-bold">Admin Dashboard</h1>
-      <p className="mt-2 text-sm text-foreground/70">Manage pricing tiers and review captured leads.</p>
-
-      <div className="mt-6 max-w-md">
-        <Input
-          label="Admin token"
-          value={token}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setToken(event.target.value)}
-          placeholder="Enter ADMIN_TOKEN"
-        />
+    <main className="mx-auto max-w-6xl px-6 py-16">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-sm text-slate-600">Manage pricing plans and review captured leads.</p>
+        </div>
+        <Button variant="ghost" onClick={logout}>
+          Sign out
+        </Button>
       </div>
 
-      {loading && <p className="mt-4 text-sm text-foreground/70">Loading admin data...</p>}
-      {error && <p className="mt-4 text-sm text-error">{error}</p>}
-      {status && <p className="mt-4 text-sm text-success">{status}</p>}
+      {error && <p className="mt-6 text-sm text-error">{error}</p>}
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
+      <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Pricing tiers</h2>
-            <p className="text-sm text-foreground/70">Create or remove tiers shown on the landing page.</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateTier} className="space-y-3">
-              <Input
-                label="Name"
-                value={form.name}
+          <h2 className="text-xl font-semibold">Create a pricing plan</h2>
+          <form onSubmit={handleCreatePlan} className="mt-6 space-y-4">
+            <Input
+              label="Plan name"
+              name="name"
+              required
+              value={form.name}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setForm((prev) => ({ ...prev, name: event.target.value }))
+              }
+            />
+            <Input
+              label="Monthly price"
+              name="price"
+              type="number"
+              value={form.price_monthly}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setForm((prev) => ({ ...prev, price_monthly: event.target.value }))
+              }
+              placeholder="79"
+            />
+            <Input
+              label="Billing description"
+              name="billing_description"
+              value={form.billing_description}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setForm((prev) => ({ ...prev, billing_description: event.target.value }))
+              }
+            />
+            <Input
+              label="Features (comma separated)"
+              name="features"
+              value={form.features}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setForm((prev) => ({ ...prev, features: event.target.value }))
+              }
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.is_custom}
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, name: event.target.value })
+                  setForm((prev) => ({ ...prev, is_custom: event.target.checked }))
                 }
+                className="h-4 w-4 rounded border-slate-300"
               />
-              <Input
-                label="Price per month"
-                value={form.pricePerMonth}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, pricePerMonth: event.target.value })
-                }
-              />
-              <Input
-                label="Currency"
-                value={form.currency}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, currency: event.target.value })
-                }
-              />
-              <Input
-                label="Features (comma separated)"
-                value={form.features}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm({ ...form, features: event.target.value })
-                }
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.isCustom}
+              Custom/enterprise plan
+            </label>
+            <Button type="submit">Create plan</Button>
+          </form>
+        </Card>
+        <Card>
+          <h2 className="text-xl font-semibold">Captured leads</h2>
+          {loading ? (
+            <div className="mt-6 flex justify-center">
+              <Spinner />
+            </div>
+          ) : leads.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">No leads captured yet.</p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {leads.map((lead) => (
+                <div key={lead.id} className="rounded-lg border border-slate-200 p-4">
+                  <p className="text-sm font-semibold">{lead.email}</p>
+                  <p className="text-xs text-slate-500">
+                    {lead.name || 'Anonymous'} • {lead.source || 'unknown'} •{' '}
+                    {lead.createdAt ? formatDate(lead.createdAt) : 'N/A'}
+                  </p>
+                  {lead.message && <p className="mt-2 text-sm text-slate-700">{lead.message}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Existing plans</h2>
+        {loading ? (
+          <div className="mt-6 flex justify-center">
+            <Spinner />
+          </div>
+        ) : plans.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-600">No plans available yet.</p>
+        ) : (
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            {plans.map((plan) => (
+              <Card key={plan.id} className="space-y-4">
+                <Input
+                  label="Name"
+                  name={`name-${plan.id}`}
+                  value={plan.name}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    setForm({ ...form, isCustom: event.target.checked })
+                    setPlans((prev) =>
+                      prev.map((item) => (item.id === plan.id ? { ...item, name: event.target.value } : item))
+                    )
                   }
                 />
-                Custom plan
-              </label>
-              <Button type="submit">Create tier</Button>
-            </form>
-            <div className="mt-6 space-y-3">
-              {tiers.map((tier) => (
-                <div key={tier.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-                  <div>
-                    <p className="font-medium">{tier.name}</p>
-                    <p className="text-xs text-foreground/70">
-                      {tier.isCustom ? 'Custom pricing' : `$${tier.pricePerMonth}/mo`}
-                    </p>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDeleteTier(tier.id)}
-                  >
+                <Input
+                  label="Monthly price"
+                  name={`price-${plan.id}`}
+                  type="number"
+                  value={plan.price_monthly ?? ''}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setPlans((prev) =>
+                      prev.map((item) =>
+                        item.id === plan.id
+                          ? {
+                              ...item,
+                              price_monthly: event.target.value === '' ? null : Number(event.target.value)
+                            }
+                          : item
+                      )
+                    )
+                  }
+                />
+                <Input
+                  label="Billing description"
+                  name={`billing-${plan.id}`}
+                  value={plan.billing_description ?? ''}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setPlans((prev) =>
+                      prev.map((item) =>
+                        item.id === plan.id ? { ...item, billing_description: event.target.value } : item
+                      )
+                    )
+                  }
+                />
+                <Input
+                  label="Features (comma separated)"
+                  name={`features-${plan.id}`}
+                  value={(plan.features || []).join(', ')}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setPlans((prev) =>
+                      prev.map((item) =>
+                        item.id === plan.id
+                          ? { ...item, features: event.target.value.split(',').map((feature) => feature.trim()) }
+                          : item
+                      )
+                    )
+                  }
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={plan.is_custom ?? false}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                      setPlans((prev) =>
+                        prev.map((item) =>
+                          item.id === plan.id ? { ...item, is_custom: event.target.checked } : item
+                        )
+                      )
+                    }
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                  Custom plan
+                </label>
+                <div className="flex gap-3">
+                  <Button onClick={() => handleUpdatePlan(plan)}>Update</Button>
+                  <Button variant="destructive" onClick={() => handleDeletePlan(plan.id)}>
                     Delete
                   </Button>
                 </div>
-              ))}
-              {!loading && tiers.length === 0 && (
-                <p className="text-sm text-foreground/70">No tiers available.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Captured leads</h2>
-            <p className="text-sm text-foreground/70">Export or copy your latest newsletter and trial interest submissions.</p>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" onClick={handleCopyCsv}>Copy CSV</Button>
-            <div className="mt-4 space-y-3">
-              {leads.map((lead) => (
-                <div key={lead.id} className="rounded-lg border border-border px-4 py-3">
-                  <p className="font-medium">{lead.name || 'Unnamed lead'}</p>
-                  <p className="text-xs text-foreground/70">{lead.email}</p>
-                  <p className="text-xs text-foreground/70">{lead.planInterest}</p>
-                  <p className="text-xs text-foreground/60">
-                    {lead.createdAt ? formatDate(lead.createdAt) : 'N/A'}
-                  </p>
-                </div>
-              ))}
-              {!loading && leads.length === 0 && (
-                <p className="text-sm text-foreground/70">No leads captured yet.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

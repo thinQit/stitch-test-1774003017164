@@ -7,37 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model PricingTier {
-  id            String  @id @default(cuid())
-  name          String?
-  pricePerMonth Float?
-  currency      String?
-  features      String?
-  stripePriceId String?
-  isCustom      Boolean @default(false)
-}
-
-model Feature {
-  id      String  @id @default(cuid())
-  title   String?
-  summary String?
-  icon    String?
-}
-
-model Lead {
-  id           String   @id @default(cuid())
-  email        String?
-  name         String?
-  company      String?
-  planInterest String?
-  createdAt    DateTime @default(now())
-}
-
-model AdminUser {
+model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String?
-  role         String?
   passwordHash String
+  role         String   @default("admin")
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Plan {
+  id                  String  @id @default(cuid())
+  name                String
+  price_monthly       Float?
+  billing_description String?
+  features            String  @default("[]")
+  is_custom           Boolean @default(false)
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  email     String
+  name      String?
+  company   String?
+  message   String?
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feature {
+  id       String  @id @default(cuid())
+  title    String
+  subtitle String
+  icon     String
+  order    Int     @default(0)
 }

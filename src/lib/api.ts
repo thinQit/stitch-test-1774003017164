@@ -1,41 +1,55 @@
-type RequestOptions = Omit<RequestInit, 'body'> & {
+export type ApiError = {
+  status: number;
+  message: string;
+};
+
+type ApiFetchOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
 };
 
-const parseResponse = async <T,>(response: Response): Promise<T> => {
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return (await response.json()) as T;
+const getBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_BASE_URL || '';
   }
-  return (await response.text()) as T;
+  return process.env.NEXT_PUBLIC_API_BASE_URL || '';
 };
 
-const request = async <T,>(url: string, options?: RequestOptions): Promise<T> => {
-  const { body, headers, ...rest } = options || {};
-  const response = await fetch(url, {
-    ...rest,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(headers || {})
-    },
-    body: body ? JSON.stringify(body) : undefined
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const baseUrl = getBaseUrl();
+  const headers = new Headers(options.headers);
+
+  if (!headers.has('Content-Type') && options.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Request failed');
+    let message = 'Request failed';
+    try {
+      const data = (await response.json()) as { message?: string };
+      if (data?.message) message = data.message;
+    } catch {
+      // ignore JSON parse errors
+    }
+    const error: ApiError = { status: response.status, message };
+    throw error;
   }
 
-  return await parseResponse<T>(response);
-};
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return (await response.json()) as T;
+}
 
 export const api = {
-  get: async <T,>(url: string, options?: RequestOptions) =>
-    request<T>(url, { ...options, method: 'GET' }),
-  post: async <T,>(url: string, body?: unknown, options?: RequestOptions) =>
-    request<T>(url, { ...options, method: 'POST', body }),
-  put: async <T,>(url: string, body?: unknown, options?: RequestOptions) =>
-    request<T>(url, { ...options, method: 'PUT', body }),
-  delete: async <T,>(url: string, options?: RequestOptions) =>
-    request<T>(url, { ...options, method: 'DELETE' })
+  get: async <T>(path: string, options: ApiFetchOptions = {}) =>
+    apiFetch<T>(path, { ...options, method: 'GET' }),
+  post: async <T>(path: string, body?: unknown, options: ApiFetchOptions = {}) =>
+    apiFetch<T>(path, { ...options, method: 'POST', body }),
 };

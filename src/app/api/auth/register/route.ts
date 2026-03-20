@@ -1,42 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import db from '@/lib/db';
 import { hashPassword, signToken } from '@/lib/auth';
 
-const schema = z.object({
+const registerSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1).optional(),
-  password: z.string().min(6)
+  password: z.string().min(6),
+  name: z.string().optional()
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const data = schema.parse(await request.json());
-    const existing = await db.adminUser.findUnique({ where: { email: data.email } });
+    const body = await request.json();
+    const parsed = registerSchema.parse(body);
+
+    const existing = await db.user.findUnique({ where: { email: parsed.email } });
     if (existing) {
-      return NextResponse.json({ success: false, error: 'Email already registered' }, { status: 409 });
+      return NextResponse.json({ success: false, error: 'User already exists' }, { status: 400 });
     }
 
-    const passwordHash = await hashPassword(data.password);
-    const user = await db.adminUser.create({
+    const passwordHash = await hashPassword(parsed.password);
+    const user = await db.user.create({
       data: {
-        email: data.email,
-        name: data.name ?? null,
-        role: 'admin',
-        passwordHash
+        email: parsed.email,
+        name: parsed.name,
+        passwordHash,
+        role: 'admin'
       }
     });
 
-    const token = signToken({ id: user.id, email: user.email, role: user.role });
-    return NextResponse.json({
+    const token = signToken({ userId: user.id, email: user.email, role: user.role });
+    const response = NextResponse.json({
       success: true,
-      data: {
-        token,
-        user: { id: user.id, email: user.email, name: user.name, role: user.role }
-      }
-    }, { status: 201 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Invalid request';
-    return NextResponse.json({ success: false, error: message }, { status: 400 });
+      data: { token, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
+    });
+    response.cookies.set('projectflow_token', token, { httpOnly: true, sameSite: 'lax', path: '/' });
+    return response;
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 }

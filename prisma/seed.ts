@@ -1,103 +1,85 @@
 import { PrismaClient } from '@prisma/client';
-import { hashPassword } from '../src/lib/auth.ts';
+import { hashPassword } from '../src/lib/auth';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.lead.deleteMany();
-  await prisma.feature.deleteMany();
-  await prisma.pricingTier.deleteMany();
-  await prisma.adminUser.deleteMany();
+  const adminEmail = 'admin@projectflow.ai';
+  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (!existingAdmin) {
+    const passwordHash = await hashPassword('AdminPass123!');
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: 'ProjectFlow Admin',
+        passwordHash,
+        role: 'admin'
+      }
+    });
+  }
 
-  await prisma.feature.create({
-    data: {
-      id: 'smart-scheduling',
-      title: 'Smart Scheduling',
-      summary: 'AI schedules tasks & meetings automatically',
-      icon: 'calendar-star'
-    }
-  });
-  await prisma.feature.create({
-    data: {
-      id: 'automated-reporting',
-      title: 'Automated Reporting',
-      summary: 'One-click reports from live project data',
-      icon: 'bar-chart'
-    }
-  });
-  await prisma.feature.create({
-    data: {
-      id: 'team-insights',
-      title: 'Team Insights',
-      summary: 'Balance workloads with AI insights and alerts',
-      icon: 'users'
-    }
-  });
+  const plans = await prisma.plan.findMany();
+  if (plans.length === 0) {
+    await prisma.plan.create({
+      data: {
+        name: 'Starter',
+        price_monthly: 29,
+        billing_description: 'For growing teams getting organized fast.',
+        features: JSON.stringify(['Up to 5 projects', 'AI scheduling', 'Weekly reports']),
+        is_custom: false
+      }
+    });
+    await prisma.plan.create({
+      data: {
+        name: 'Pro',
+        price_monthly: 79,
+        billing_description: 'For scaling teams that need advanced insights.',
+        features: JSON.stringify(['Unlimited projects', 'Automation workflows', 'Priority support']),
+        is_custom: false
+      }
+    });
+    await prisma.plan.create({
+      data: {
+        name: 'Enterprise',
+        price_monthly: null,
+        billing_description: 'Custom security, SLAs, and onboarding.',
+        features: JSON.stringify(['Dedicated success manager', 'Custom integrations', 'On-prem options']),
+        is_custom: true
+      }
+    });
+  }
 
-  await prisma.pricingTier.create({
-    data: {
-      id: 'starter',
-      name: 'Starter',
-      pricePerMonth: 29,
-      currency: 'USD',
-      features: JSON.stringify(['AI scheduling', '3 projects', 'Email support']),
-      stripePriceId: 'price_starter',
-      isCustom: false
-    }
-  });
-  await prisma.pricingTier.create({
-    data: {
-      id: 'pro',
-      name: 'Pro',
-      pricePerMonth: 79,
-      currency: 'USD',
-      features: JSON.stringify(['Unlimited projects', 'Automated reporting', 'Slack + Teams integrations']),
-      stripePriceId: 'price_pro',
-      isCustom: false
-    }
-  });
-  await prisma.pricingTier.create({
-    data: {
-      id: 'enterprise',
-      name: 'Enterprise',
-      pricePerMonth: null,
-      currency: 'USD',
-      features: JSON.stringify(['Dedicated success team', 'Custom AI workflows', 'Security review']),
-      stripePriceId: 'price_enterprise',
-      isCustom: true
-    }
-  });
-
-  await prisma.lead.create({
-    data: {
-      email: 'ava@projectflow.ai',
-      name: 'Ava Patel',
-      company: 'Skyline Ventures',
-      planInterest: 'pro'
-    }
-  });
-  await prisma.lead.create({
-    data: {
-      email: 'liam@greenlabs.com',
-      name: 'Liam Chen',
-      company: 'GreenLabs',
-      planInterest: 'starter'
-    }
-  });
-
-  const passwordHash = await hashPassword('password123');
-  await prisma.adminUser.create({
-    data: {
-      email: 'admin@projectflow.ai',
-      name: 'ProjectFlow Admin',
-      role: 'admin',
-      passwordHash
-    }
-  });
+  const features = await prisma.feature.findMany();
+  if (features.length === 0) {
+    await prisma.feature.create({
+      data: {
+        title: 'Smart Scheduling',
+        subtitle: 'AI optimizes timelines, dependencies, and workload across your portfolio.',
+        icon: 'calendar',
+        order: 1
+      }
+    });
+    await prisma.feature.create({
+      data: {
+        title: 'Automated Reporting',
+        subtitle: 'Real-time executive summaries and KPI dashboards in one click.',
+        icon: 'insights',
+        order: 2
+      }
+    });
+    await prisma.feature.create({
+      data: {
+        title: 'Team Insights',
+        subtitle: 'Spot bottlenecks early with predictive delivery risk signals.',
+        icon: 'group',
+        order: 3
+      }
+    });
+  }
 }
 
 main()
-  .catch((error) => {
+  .catch(async (error) => {
     console.error(error);
     process.exit(1);
   })

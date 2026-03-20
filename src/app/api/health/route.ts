@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const verbose = request.nextUrl.searchParams.get('verbose') === 'true';
-  const data = {
-    status: 'ok',
-    uptime: Number(process.uptime().toFixed(2)),
-    ...(verbose ? { environment: process.env.NODE_ENV ?? 'development' } : {})
-  };
+  const detailed = request.nextUrl.searchParams.get('detailed') === 'true';
+  const data: { status: string; uptimeSeconds?: number; version?: string } = { status: 'ok' };
+
+  if (detailed) {
+    data.uptimeSeconds = Math.floor(process.uptime());
+    data.version = process.env.NEXT_PUBLIC_SITE_URL || 'local';
+  }
+
   return NextResponse.json({ success: true, data });
 }

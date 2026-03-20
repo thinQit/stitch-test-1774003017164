@@ -1,21 +1,24 @@
-'use client';
+import * as React from 'react';
 
-import type { HTMLAttributes } from 'react';
-
-type SpinnerProps = HTMLAttributes<HTMLDivElement> & {
-  label?: string;
+export type SpinnerProps = React.HTMLAttributes<HTMLDivElement> & {
+  size?: number;
+  colorClassName?: string;
 };
 
-const cn = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
-
-export default function Spinner({ className, label = 'Loading', ...props }: SpinnerProps) {
+export default function Spinner({ size = 24, colorClassName = 'border-blue-600', className = '', ...props }: SpinnerProps) {
+  const dimension = `${size}px`;
   return (
-    <div className={cn('inline-flex items-center gap-2 text-sm text-foreground/70', className)} {...props}>
-      <span
-        className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
-        aria-hidden="true"
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className={`inline-flex items-center justify-center ${className}`}
+      {...props}
+    >
+      <div
+        className={`animate-spin rounded-full border-2 border-transparent ${colorClassName} border-t-transparent`}
+        style={{ width: dimension, height: dimension }}
       />
-      <span className="sr-only">{label}</span>
     </div>
   );
 }

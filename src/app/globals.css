@@ -1,19 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
   --primary: #7c3aed;
-  --primary-hover: #06b6d4;
+  --primary-hover: #6d28d9;
   --secondary: #3b82f6;
-  --background: #fcf8ff;
+  --accent: #06b6d4;
+  --background: #ffffff;
   --foreground: #0f172a;
   --muted: #f1f5f9;
   --border: #e2e8f0;
   --error: #ef4444;
   --success: #22c55e;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
+
 body {
-  color: var(--foreground);
-  background: var(--background);
+  @apply bg-background text-foreground antialiased;
+}
+
+* {
+  @apply border-border;
 }

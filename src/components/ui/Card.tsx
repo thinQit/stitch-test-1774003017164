@@ -1,41 +1,26 @@
 import * as React from 'react';
 
-type CardProps = React.HTMLAttributes<HTMLDivElement>;
+export type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  title?: string;
+  description?: string;
+};
 
-type CardSectionProps = React.HTMLAttributes<HTMLDivElement>;
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className = '', title, description, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={`rounded-lg border border-gray-200 bg-white p-6 shadow-sm ${className}`}
+        {...props}
+      >
+        {title ? <h3 className="text-lg font-semibold text-gray-900">{title}</h3> : null}
+        {description ? <p className="mt-1 text-sm text-gray-600">{description}</p> : null}
+        {children ? <div className={title || description ? 'mt-4' : ''}>{children}</div> : null}
+      </div>
+    );
+  }
+);
 
-const cx = (...classes: Array<string | undefined | null | false>) =>
-  classes.filter(Boolean).join(' ');
-
-const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cx('rounded-2xl border border-border bg-white shadow-sm', className)}
-    {...props}
-  />
-));
 Card.displayName = 'Card';
 
-const CardHeader = React.forwardRef<HTMLDivElement, CardSectionProps>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cx('border-b border-border px-6 py-5', className)} {...props} />
-  )
-);
-CardHeader.displayName = 'CardHeader';
-
-const CardContent = React.forwardRef<HTMLDivElement, CardSectionProps>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cx('px-6 py-5', className)} {...props} />
-  )
-);
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef<HTMLDivElement, CardSectionProps>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cx('border-t border-border px-6 py-5', className)} {...props} />
-  )
-);
-CardFooter.displayName = 'CardFooter';
-
-export { CardContent, CardFooter, CardHeader };
 export default Card;

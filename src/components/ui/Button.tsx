@@ -1,45 +1,37 @@
-'use client';
+import * as React from 'react';
 
-import type { ButtonHTMLAttributes } from 'react';
-
-type ButtonVariant = 'primary' | 'secondary' | 'outline';
-
-type ButtonSize = 'sm' | 'md' | 'lg';
-
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
 };
 
-const baseClasses =
-  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50';
-
-const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-white hover:bg-primary-hover',
-  secondary: 'bg-secondary text-white hover:bg-secondary/90',
-  outline: 'border border-border text-foreground hover:bg-muted'
+const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
+  primary: 'bg-blue-600 text-white hover:bg-blue-700',
+  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+  ghost: 'bg-transparent text-gray-900 hover:bg-gray-100',
 };
 
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-9 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-11 px-6 text-base'
+const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
+  sm: 'px-3 py-1.5 text-sm',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-5 py-2.5 text-base',
 };
 
-const cn = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className = '', variant = 'primary', size = 'md', type = 'button', ...props }, ref) => {
+    const classes = [
+      'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none',
+      variantClasses[variant],
+      sizeClasses[size],
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ');
 
-export default function Button({
-  variant = 'primary',
-  size = 'md',
-  className,
-  type = 'button',
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(baseClasses, variantClasses[variant], sizeClasses[size], className)}
-      {...props}
-    />
-  );
-}
+    return <button ref={ref} type={type} className={classes} {...props} />;
+  }
+);
+
+Button.displayName = 'Button';
+
+export default Button;

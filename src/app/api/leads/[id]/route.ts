@@ -1,67 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/lib/db';
-import { assertAdmin } from '@/lib/admin';
+import db from '@/lib/db';
 
-const schema = z.object({
-  email: z.string().email().optional(),
-  name: z.string().optional(),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
-});
-
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    assertAdmin(request);
     const lead = await db.lead.findUnique({ where: { id: params.id } });
     if (!lead) {
       return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: { ...lead, createdAt: lead.createdAt.toISOString() } });
-  } catch (error: unknown) {
-    const status = (error as Error & { status?: number }).status ?? 401;
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: true, data: { lead } });
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Failed to load lead' }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    assertAdmin(request);
-    const data = schema.parse(await request.json());
-    const existing = await db.lead.findUnique({ where: { id: params.id } });
-    if (!existing) {
-      return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
-    }
-    const lead = await db.lead.update({
-      where: { id: params.id },
-      data: {
-        email: data.email ?? undefined,
-        name: data.name ?? undefined,
-        company: data.company ?? undefined,
-        planInterest: data.planInterest ?? undefined
-      }
-    });
-    return NextResponse.json({ success: true, data: { ...lead, createdAt: lead.createdAt.toISOString() } });
-  } catch (error: unknown) {
-    const status = (error as Error & { status?: number }).status ?? 400;
-    const message = error instanceof Error ? error.message : 'Invalid request';
-    return NextResponse.json({ success: false, error: message }, { status });
-  }
-}
-
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    assertAdmin(request);
-    const existing = await db.lead.findUnique({ where: { id: params.id } });
-    if (!existing) {
-      return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
-    }
     await db.lead.delete({ where: { id: params.id } });
-    return NextResponse.json({ success: true, data: { id: params.id } });
-  } catch (error: unknown) {
-    const status = (error as Error & { status?: number }).status ?? 400;
-    const message = error instanceof Error ? error.message : 'Invalid request';
-    return NextResponse.json({ success: false, error: message }, { status });
+    return NextResponse.json({ success: true, data: { deleted: true } });
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Unable to delete lead' }, { status: 400 });
   }
 }
