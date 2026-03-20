@@ -1,40 +1,33 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
-type AuthUser = {
-  id?: string;
-  email?: string;
-  token?: string;
+export type AuthUser = {
+  id: string;
+  email: string;
 } | null;
 
 type AuthContextValue = {
   user: AuthUser;
-  token: string | null;
-  setToken: (token: string | null) => void;
+  setUser: React.Dispatch<React.SetStateAction<AuthUser>>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user: token ? { token } : null,
-      token,
-      setToken
-    }),
-    [token]
-  );
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser>(null);
+  const value = useMemo(() => ({ user, setUser }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthContextValue {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }
+
+export default AuthProvider;
