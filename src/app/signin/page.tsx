@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 
 type SignInResponse = { success: boolean; message?: string; token?: string };
 
@@ -38,19 +38,25 @@ export default function SignInPage() {
           type="email"
           required
           value={form.email}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, email: event.target.value })}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            setForm({ ...form, email: event.target.value })
+          }
         />
         <Input
           label="Password"
           type="password"
           required
           value={form.password}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, password: event.target.value })}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            setForm({ ...form, password: event.target.value })
+          }
         />
         <Button type="submit" className="w-full" disabled={status === 'loading'}>
           {status === 'loading' ? 'Signing in...' : 'Sign in'}
         </Button>
-        {status === 'error' && <p className="text-sm text-error">Invalid credentials. Try again.</p>}
+        {status === 'error' && (
+          <p className="text-sm text-error">Invalid credentials. Try again.</p>
+        )}
       </form>
     </main>
   );

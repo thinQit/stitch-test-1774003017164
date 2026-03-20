@@ -1,160 +1,167 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Hero } from '@/components/marketing/Hero';
 import FeatureCard from '@/components/marketing/FeatureCard';
-import { PricingSection } from '@/components/marketing/PricingSection';
-import Footer from '@/components/layout/Footer';
+import { PricingCard } from '@/components/marketing/PricingCard';
+import { LeadForm } from '@/components/marketing/LeadForm';
+import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
-import Button from '@/components/ui/Button';
 import { api } from '@/lib/api';
-import { Feature, PricingTier } from '@/types';
+import type { SubscriptionPlan } from '@/types';
+
+interface Feature {
+  id: string;
+  title: string;
+  description: string;
+  iconName: string;
+}
 
 export default function HomePage() {
   const [features, setFeatures] = useState<Feature[]>([]);
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const [pricing, setPricing] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [featuresResponse, pricingResponse] = await Promise.all([
-        api.get<{ features: Feature[] }>('/api/features'),
-        api.get<{ tiers: PricingTier[] }>('/api/pricing')
-      ]);
-      if (!featuresResponse || !pricingResponse) {
-        setError('Unable to load ProjectFlow content right now.');
-        return;
-      }
-      setFeatures(featuresResponse?.features ?? []);
-      setTiers(pricingResponse?.tiers ?? []);
-    } catch (_error: unknown) {
-      setError('Unable to load ProjectFlow content right now.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [error, setError] = useState('');
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    const load = async () => {
+      try {
+        const [featureData, pricingData] = await Promise.all([
+          api.get<Feature[]>('/api/features'),
+          api.get<SubscriptionPlan[]>('/api/pricing')
+        ]);
+        setFeatures(featureData ?? []);
+        setPricing(pricingData ?? []);
+      } catch (_error) {
+        setError('Unable to load ProjectFlow data. Please try again soon.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <main className="flex flex-col">
-      <Hero />
-
-      <section className="py-16">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 md:grid-cols-2 md:items-center md:px-6">
-          <div className="space-y-4">
-            <h2 className="text-3xl font-bold md:text-4xl">Plan faster with intelligent workflows</h2>
-            <p className="text-sm text-foreground/70 md:text-base">
-              ProjectFlow pairs AI scheduling with team health analytics, so every initiative stays aligned to
-              business outcomes. Visualize progress, automate reporting, and keep stakeholders confident.
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-hover to-[#06b6d4] py-20 text-white">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 lg:flex-row lg:justify-between">
+          <div className="flex max-w-xl flex-col gap-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">
+              ProjectFlow
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="secondary">See it in action</Button>
-              <Link href="/enterprise">
-                <Button variant="outline">Enterprise rollout</Button>
+            <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
+              AI-powered project management for delivery teams
+            </h1>
+            <p className="text-lg text-white/90">
+              Align every sprint, automate reporting, and ship faster with shared visibility.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/pricing"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary"
+              >
+                View pricing
               </Link>
+              <button
+                type="button"
+                onClick={() => setEnterpriseOpen(true)}
+                className="rounded-full border border-white/70 px-6 py-3 text-sm font-semibold text-white"
+              >
+                Talk to sales
+              </button>
             </div>
           </div>
-          <Image
-            src="/images/feature.jpg"
-            alt="ProjectFlow feature preview"
-            width={1200}
-            height={675}
-            className="h-auto w-full rounded-2xl object-cover shadow-lg"
-          />
+          <div className="relative h-[320px] w-full max-w-md">
+            <Image
+              src="/images/dashboard-preview.png"
+              alt="ProjectFlow dashboard preview"
+              fill
+              className="rounded-3xl object-cover"
+              priority
+            />
+          </div>
         </div>
       </section>
 
-      {loading ? (
-        <section className="py-16">
-          <div className="mx-auto flex w-full max-w-6xl justify-center px-4 md:px-6">
+      <section className="mx-auto w-full max-w-6xl px-6 py-16">
+        <div className="mb-10 max-w-2xl">
+          <h2 className="text-3xl font-bold">Every project milestone, automated.</h2>
+          <p className="mt-3 text-secondary">
+            ProjectFlow surfaces risks early and keeps stakeholders aligned with real-time insights.
+          </p>
+        </div>
+        {loading ? (
+          <div className="flex justify-center">
             <Spinner />
           </div>
-        </section>
-      ) : error ? (
-        <section className="py-16">
-          <div className="mx-auto w-full max-w-3xl space-y-4 px-4 text-center md:px-6">
-            <h2 className="text-2xl font-semibold">We couldn’t load the latest updates</h2>
-            <p className="text-sm text-foreground/70">{error}</p>
-            <Button onClick={() => void loadData()}>Try again</Button>
+        ) : error ? (
+          <div className="rounded-lg border border-error bg-red-50 p-4 text-center text-error">
+            {error}
           </div>
-        </section>
-      ) : (
-        <>
-          <section className="py-16">
-            <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
-              <div className="text-center">
-                <h2 className="text-3xl font-bold md:text-4xl">Built for teams that move fast</h2>
-                <p className="mt-3 text-sm text-foreground/70 md:text-base">
-                  ProjectFlow pairs AI-driven automation with clear visibility, so every milestone lands on time.
-                </p>
-              </div>
-              {features.length === 0 ? (
-                <div className="mt-8 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-foreground/70">
-                  Feature highlights are updating. Check back soon for the latest capabilities.
-                </div>
-              ) : (
-                <div className="mt-10 grid gap-6 md:grid-cols-3">
-                  {features.map((feature) => (
-                    <FeatureCard
-                      key={feature.id}
-                      title={feature.title}
-                      description={feature.description}
-                      icon={feature.icon}
-                      highlightColor={feature.highlightColor}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => (
+              <FeatureCard key={feature.id} {...feature} />
+            ))}
+          </div>
+        )}
+      </section>
 
-          {tiers.length === 0 ? (
-            <section className="py-16">
-              <div className="mx-auto w-full max-w-3xl px-4 text-center text-sm text-foreground/70 md:px-6">
-                Pricing details are being refreshed. Please check back soon.
-              </div>
-            </section>
+      <section className="bg-muted py-16">
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <div className="mb-10 flex flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">Plans for every delivery team</h2>
+              <p className="mt-3 text-secondary">
+                Choose a tier that scales with your roadmap.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEnterpriseOpen(true)}
+              className="rounded-full border border-primary px-5 py-2 text-sm font-semibold text-primary"
+            >
+              Need enterprise?
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex justify-center">
+              <Spinner />
+            </div>
+          ) : pricing.length === 0 ? (
+            <div className="rounded-lg border border-border bg-white p-6 text-center text-secondary">
+              Pricing tiers are being finalized.
+            </div>
           ) : (
-            <PricingSection tiers={tiers} />
-          )}
-
-          <section className="py-16">
-            <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 md:grid-cols-2 md:items-center md:px-6">
-              <Image
-                src="/images/cta.jpg"
-                alt="Teams collaborating with ProjectFlow"
-                width={1200}
-                height={675}
-                className="h-auto w-full rounded-2xl object-cover shadow-lg"
-              />
-              <div className="space-y-4">
-                <h2 className="text-3xl font-bold md:text-4xl">Ready to transform your delivery rhythm?</h2>
-                <p className="text-sm text-foreground/70 md:text-base">
-                  Align your portfolio, empower your teams, and give leadership real-time clarity with ProjectFlow.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/pricing">
-                    <Button>Explore pricing</Button>
-                  </Link>
-                  <Link href="/enterprise">
-                    <Button variant="outline">Talk to sales</Button>
-                  </Link>
-                </div>
-              </div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              {pricing.map((plan) => (
+                <PricingCard
+                  key={plan.id}
+                  plan={plan}
+                  {...plan}
+                  onSelect={() => setEnterpriseOpen(true)}
+                  onContact={() => setEnterpriseOpen(true)}
+                />
+              ))}
             </div>
-          </section>
-        </>
-      )}
+          )}
+        </div>
+      </section>
 
-      <Footer />
+      <Modal
+        isOpen={enterpriseOpen}
+        open={enterpriseOpen}
+        onClose={() => setEnterpriseOpen(false)}
+        title="Request an enterprise demo"
+      >
+        <LeadForm
+          onClose={() => setEnterpriseOpen(false)}
+          onSuccess={() => setEnterpriseOpen(false)}
+          onSubmitted={() => setEnterpriseOpen(false)}
+        />
+      </Modal>
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import LeadTable from '@/components/admin/LeadTable';
+import { LeadTable } from '@/components/admin/LeadTable';
 import Spinner from '@/components/ui/Spinner';
 import { api } from '@/lib/api';
 import type { Lead } from '@/types';
@@ -56,23 +56,26 @@ export default function AdminLeadsPage() {
             >
               <option value="all">All</option>
               <option value="starter">Starter</option>
-              <option value="pro">Pro</option>
+              <option value="growth">Growth</option>
               <option value="enterprise">Enterprise</option>
             </select>
           </div>
         </div>
-
-        {loading ? (
-          <div className="flex justify-center">
-            <Spinner />
-          </div>
-        ) : authError ? (
-          <div className="rounded-lg border border-error bg-red-50 p-4 text-error">
-            {authError}
-          </div>
-        ) : (
-          <LeadTable leads={filteredLeads} onUpdated={loadLeads} />
-        )}
+        <div className="rounded-lg border border-border bg-white p-6">
+          {loading ? (
+            <div className="flex justify-center">
+              <Spinner />
+            </div>
+          ) : authError ? (
+            <div className="rounded-lg border border-error bg-red-50 p-4 text-center text-error">
+              {authError}
+            </div>
+          ) : filteredLeads.length === 0 ? (
+            <p className="text-center text-secondary">No leads match the selected filter.</p>
+          ) : (
+            <LeadTable leads={filteredLeads} onRefresh={loadLeads} />
+          )}
+        </div>
       </div>
     </main>
   );
