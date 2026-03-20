@@ -1,35 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import db from '@/lib/db';
 
-const features = [
-  {
-    id: 'smart-scheduling',
-    title: 'Smart Scheduling',
-    description: 'AI prioritizes work and surfaces delivery risks before they block launches.',
-    iconName: '✨'
-  },
-  {
-    id: 'automated-reporting',
-    title: 'Automated Reporting',
-    description: 'Generate weekly stakeholder updates with zero manual status chasing.',
-    iconName: '📊'
-  },
-  {
-    id: 'team-insights',
-    title: 'Team Insights',
-    description: 'Balance workloads and monitor sentiment across squads in real time.',
-    iconName: '👥'
-  }
-];
+const schema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  icon: z.string().min(1),
+  highlightColor: z.string().min(1)
+});
 
 export async function GET(_request: NextRequest) {
   try {
-    z.object({}).parse({});
-    return NextResponse.json({ success: true, data: features });
+    const features = await db.feature.findMany();
+    return NextResponse.json({ success: true, data: { features } });
   } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Unable to load features.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Unable to fetch features' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const parsed = schema.parse(body);
+
+    const feature = await db.feature.create({ data: parsed });
+
+    return NextResponse.json({ success: true, data: feature }, { status: 201 });
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Unable to create feature' }, { status: 400 });
   }
 }

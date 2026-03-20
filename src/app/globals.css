@@ -6,6 +6,7 @@
   --primary: #7c3aed;
   --primary-hover: #3b82f6;
   --secondary: #3b82f6;
+  --accent: #06b6d4;
   --background: #ffffff;
   --foreground: #0f172a;
   --muted: #f1f5f9;
@@ -15,11 +16,20 @@
   --radius: 0.5rem;
 }
 
-html {
-  scroll-behavior: smooth;
+* {
+  @apply border-border;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  @apply bg-background text-foreground antialiased;
+}
+
+a {
+  @apply text-foreground hover:text-primary;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
 }

@@ -1,28 +1,20 @@
-import type { HTMLAttributes } from 'react';
-
-function classNames(...classes: Array<string | undefined>) {
-  return classes.filter(Boolean).join(' ');
-}
+import { HTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      {...props}
-      className={classNames('rounded-xl border border-border bg-white shadow-sm', className)}
-    />
-  );
+  return <div className={cn('rounded-md border border-border bg-background shadow-sm', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={classNames('border-b border-border p-4', className)} />;
+  return <div className={cn('border-b border-border px-6 py-4', className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={classNames('p-4', className)} />;
+  return <div className={cn('px-6 py-4', className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={classNames('border-t border-border p-4', className)} />;
+  return <div className={cn('border-t border-border px-6 py-4', className)} {...props} />;
 }
 
 export default Card;

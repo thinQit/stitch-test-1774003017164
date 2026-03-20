@@ -1,70 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/lib/db';
+import db from '@/lib/db';
 
-const featureSchema = z.array(z.string());
-
-const defaultPlans = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    priceMonthly: 29,
-    billingInterval: 'month',
-    features: ['Up to 10 teammates', 'AI scheduling for 3 projects', 'Basic reporting'],
-    isCustom: false
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    priceMonthly: 79,
-    billingInterval: 'month',
-    features: ['Unlimited teammates', 'Automated reporting', 'Advanced team insights'],
-    isCustom: false
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    priceMonthly: null,
-    billingInterval: 'month',
-    features: ['Custom workflows', 'Dedicated CSM', 'Security & compliance reviews'],
-    isCustom: true
-  }
-];
-
-function parseFeatures(value: string | null): string[] | null {
-  if (!value) return null;
+const parseFeatures = (value: string | null): string[] => {
+  if (!value) return [];
   try {
-    const parsed = JSON.parse(value) as unknown;
-    const result = featureSchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : [];
   } catch (_error) {
-    return null;
+    return [];
   }
-}
+};
 
 export async function GET(_request: NextRequest) {
   try {
-    z.object({}).parse({});
-    const plans = await db.subscriptionPlan.findMany({
-      orderBy: { priceMonthly: 'asc' }
-    });
+    const tiers = await db.pricingTier.findMany();
+    const mapped = tiers.map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      monthlyPrice: tier.monthlyPrice,
+      isCustom: tier.isCustom,
+      features: parseFeatures(tier.features)
+    }));
 
-    const data = plans.length
-      ? plans.map((plan) => ({
-          id: plan.id,
-          name: plan.name,
-          priceMonthly: plan.priceMonthly,
-          billingInterval: plan.billingInterval,
-          features: parseFeatures(plan.features),
-          isCustom: plan.isCustom
-        }))
-      : defaultPlans;
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: { tiers: mapped } });
   } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Unable to load pricing.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Unable to fetch pricing tiers' }, { status: 500 });
   }
 }

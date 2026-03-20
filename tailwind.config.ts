@@ -1,13 +1,18 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
+  content: [
+    './src/app/**/*.{ts,tsx}',
+    './src/components/**/*.{ts,tsx}',
+    './src/lib/**/*.{ts,tsx}'
+  ],
   theme: {
     extend: {
       colors: {
         primary: 'var(--primary)',
         'primary-hover': 'var(--primary-hover)',
         secondary: 'var(--secondary)',
+        accent: 'var(--accent)',
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         muted: 'var(--muted)',
@@ -16,7 +21,7 @@ const config: Config = {
         success: 'var(--success)'
       },
       borderRadius: {
-        lg: 'var(--radius)'
+        md: 'var(--radius)'
       }
     }
   },

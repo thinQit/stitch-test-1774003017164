@@ -1,22 +1,15 @@
-export interface SubscriptionPlan {
+export interface Feature {
   id: string;
-  name: string;
-  priceMonthly?: number | null;
-  billingInterval?: string | null;
-  features?: string[] | string | null;
-  isCustom: boolean;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
+  title: string;
+  description: string;
+  icon: string;
+  highlightColor: string;
 }
 
-export interface Lead {
+export interface PricingTier {
   id: string;
   name: string;
-  email: string;
-  company?: string | null;
-  message?: string | null;
-  interestTier?: string | null;
-  contacted: boolean;
-  createdAt?: string | Date;
-  updatedAt?: string | Date;
+  monthlyPrice: number;
+  isCustom: boolean;
+  features: string[];
 }

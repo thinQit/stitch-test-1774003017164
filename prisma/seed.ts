@@ -4,102 +4,119 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.lead.deleteMany();
-  await prisma.subscriptionPlan.deleteMany();
-  await prisma.siteSettings.deleteMany();
-  await prisma.user.deleteMany();
+  const passwordHash = await bcrypt.hash('Password123!', 10);
 
-  const adminPassword = await bcrypt.hash('Password123!', 10);
-
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { email: 'admin@projectflow.ai' },
+    update: {},
+    create: {
       email: 'admin@projectflow.ai',
       name: 'ProjectFlow Admin',
-      password: adminPassword
+      passwordHash
     }
   });
 
-  const starterFeatures = JSON.stringify([
-    'Up to 10 teammates',
-    'AI scheduling for 3 projects',
-    'Basic reporting'
-  ]);
-  const proFeatures = JSON.stringify([
-    'Unlimited teammates',
-    'Automated reporting',
-    'Advanced team insights'
-  ]);
-  const enterpriseFeatures = JSON.stringify([
-    'Custom workflows',
-    'Dedicated CSM',
-    'Security & compliance reviews'
-  ]);
+  await prisma.feature.upsert({
+    where: { id: 'feature-smart-scheduling' },
+    update: {},
+    create: {
+      id: 'feature-smart-scheduling',
+      title: 'Smart Scheduling',
+      description: 'Predictive timelines adjust automatically as priorities shift, keeping every deliverable on track.',
+      icon: '⚡',
+      highlightColor: 'bg-primary'
+    }
+  });
 
-  await prisma.subscriptionPlan.create({
-    data: {
+  await prisma.feature.upsert({
+    where: { id: 'feature-reporting' },
+    update: {},
+    create: {
+      id: 'feature-reporting',
+      title: 'Automated Reporting',
+      description: 'Generate executive-ready updates with one click, complete with risk alerts and progress snapshots.',
+      icon: '📊',
+      highlightColor: 'bg-secondary'
+    }
+  });
+
+  await prisma.feature.upsert({
+    where: { id: 'feature-insights' },
+    update: {},
+    create: {
+      id: 'feature-insights',
+      title: 'Team Insights',
+      description: 'Surface workload balance, velocity trends, and blockers across every squad in real time.',
+      icon: '🧠',
+      highlightColor: 'bg-accent'
+    }
+  });
+
+  await prisma.pricingTier.upsert({
+    where: { id: 'tier-starter' },
+    update: {},
+    create: {
+      id: 'tier-starter',
       name: 'Starter',
-      priceMonthly: 29,
-      billingInterval: 'month',
-      features: starterFeatures,
-      isCustom: false
+      monthlyPrice: 29,
+      isCustom: false,
+      features: JSON.stringify(['AI task prioritization', 'Weekly health reports', 'Up to 10 projects'])
     }
   });
 
-  await prisma.subscriptionPlan.create({
-    data: {
+  await prisma.pricingTier.upsert({
+    where: { id: 'tier-pro' },
+    update: {},
+    create: {
+      id: 'tier-pro',
       name: 'Pro',
-      priceMonthly: 79,
-      billingInterval: 'month',
-      features: proFeatures,
-      isCustom: false
+      monthlyPrice: 79,
+      isCustom: false,
+      features: JSON.stringify([
+        'Everything in Starter',
+        'Automated reporting',
+        'Unlimited projects',
+        'Slack + Jira integrations'
+      ])
     }
   });
 
-  await prisma.subscriptionPlan.create({
-    data: {
+  await prisma.pricingTier.upsert({
+    where: { id: 'tier-enterprise' },
+    update: {},
+    create: {
+      id: 'tier-enterprise',
       name: 'Enterprise',
-      priceMonthly: null,
-      billingInterval: 'month',
-      features: enterpriseFeatures,
-      isCustom: true
+      monthlyPrice: 0,
+      isCustom: true,
+      features: JSON.stringify(['Custom AI workflows', 'Dedicated success lead', 'Advanced security & SSO'])
     }
   });
 
-  await prisma.siteSettings.create({
-    data: {
-      primaryColor: '#7c3aed',
-      secondaryColor: '#3b82f6',
-      tertiaryColor: '#06b6d4',
-      heroTitle: 'AI-powered project management that keeps your team ahead.',
-      heroSubtitle: 'Smart scheduling, automated reporting, and team insights in one hub.'
+  await prisma.subscriber.upsert({
+    where: { email: 'growth@projectflow.ai' },
+    update: {},
+    create: {
+      email: 'growth@projectflow.ai',
+      planInterest: 'Pro'
     }
   });
 
-  await prisma.lead.create({
-    data: {
-      name: 'Jordan Lee',
-      email: 'jordan@acme.io',
-      company: 'Acme Inc',
-      message: 'Interested in a Pro plan demo for our delivery team.',
-      interestTier: 'Pro',
-      contacted: false
-    }
-  });
-
-  await prisma.lead.create({
-    data: {
-      name: 'Sam Patel',
-      email: 'sam@northwind.co',
-      company: 'Northwind',
-      message: 'We need enterprise security support.',
-      interestTier: 'Enterprise',
-      contacted: true
+  await prisma.enterpriseContact.upsert({
+    where: { id: 'enterprise-seed' },
+    update: {},
+    create: {
+      id: 'enterprise-seed',
+      companyName: 'Nimbus Labs',
+      contactName: 'Avery Chen',
+      email: 'avery@nimbuslabs.com',
+      message: 'We need an enterprise rollout for 200+ collaborators and custom onboarding.'
     }
   });
 }
 
 main()
-  .catch((error: unknown) => {
+  .catch((error) => {
     console.error(error);
     process.exit(1);
   })

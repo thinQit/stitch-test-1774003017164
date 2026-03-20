@@ -7,44 +7,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SubscriptionPlan {
-  id              String   @id @default(cuid())
-  name            String
-  priceMonthly    Int?
-  billingInterval String?
-  features        String?
-  isCustom        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Lead {
-  id           String   @id @default(cuid())
-  name         String
-  email        String
-  company      String?
-  message      String?
-  interestTier String?
-  contacted    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-model SiteSettings {
-  id             String   @id @default(cuid())
-  primaryColor   String?
-  secondaryColor String?
-  tertiaryColor  String?
-  heroTitle      String?
-  heroSubtitle   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Feature {
+  id             String @id @default(cuid())
+  title          String
+  description    String
+  icon           String
+  highlightColor String
+}
+
+model PricingTier {
+  id           String  @id @default(cuid())
+  name         String
+  monthlyPrice Float
+  isCustom     Boolean @default(false)
+  features     Json
+}
+
+model Subscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  planInterest String?
+  createdAt    DateTime @default(now())
+}
+
+model EnterpriseContact {
+  id          String   @id @default(cuid())
+  companyName String
+  contactName String
+  email       String
+  message     String
+  createdAt   DateTime @default(now())
 }

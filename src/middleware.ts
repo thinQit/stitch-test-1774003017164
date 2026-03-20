@@ -1,35 +1,33 @@
-export const runtime = 'nodejs';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromHeader, verifyToken } from '@/lib/auth';
 
-function isAuthorized(request: NextRequest): boolean {
-  const adminToken = request.headers.get('x-admin-token');
-  if (adminToken && process.env.ADMIN_TOKEN && adminToken === process.env.ADMIN_TOKEN) {
-    return true;
-  }
-
-  const headerToken = getTokenFromHeader(request.headers.get('authorization'));
-  const cookieToken = request.cookies.get('pf_admin')?.value;
-  const token = headerToken ?? cookieToken;
-  if (!token) return false;
-
-  try {
-    verifyToken(token);
-    return true;
-  } catch (_error) {
-    return false;
-  }
-}
+export const runtime = 'nodejs';
 
 export function middleware(request: NextRequest) {
-  if (isAuthorized(request)) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/api/features') && request.method === 'GET') {
     return NextResponse.next();
   }
 
-  return NextResponse.redirect(new URL('/', request.url));
+  const token = getTokenFromHeader(request.headers.get('authorization'));
+  if (!token) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    verifyToken(token);
+    return NextResponse.next();
+  } catch (_error) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: [
+    '/api/subscribers/:path*',
+    '/api/enterprise-contacts/:path*',
+    '/api/pricing-tiers/:path*',
+    '/api/features/:path*'
+  ]
 };
