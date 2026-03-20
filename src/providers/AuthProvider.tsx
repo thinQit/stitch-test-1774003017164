@@ -1,78 +1,40 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { api } from '@/lib/api';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
-type LoginResult = {
-  success: boolean;
-  message?: string;
-};
+type AuthUser = {
+  id?: string;
+  email?: string;
+  token?: string;
+} | null;
 
 type AuthContextValue = {
-  isAuthenticated: boolean;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<LoginResult>;
-  logout: () => void;
+  user: AuthUser;
+  token: string | null;
+  setToken: (token: string | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const SESSION_KEY = 'pf_admin_session';
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [token, setToken] = useState<string | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(SESSION_KEY) : null;
-    setIsAuthenticated(Boolean(stored));
-    setLoading(false);
-  }, []);
-
-  const login = async (email: string, password: string): Promise<LoginResult> => {
-    setLoading(true);
-    const res = await api.post<{ success?: boolean; message?: string }>('/api/login', { email, password });
-    setLoading(false);
-
-    if (res.error) {
-      return { success: false, message: res.error };
-    }
-
-    if (res.data?.success === false) {
-      return { success: false, message: res.data.message || 'Login failed' };
-    }
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SESSION_KEY, 'true');
-    }
-    setIsAuthenticated(true);
-    return { success: true };
-  };
-
-  const logout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(SESSION_KEY);
-    }
-    setIsAuthenticated(false);
-  };
-
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated,
-      loading,
-      login,
-      logout
+      user: token ? { token } : null,
+      token,
+      setToken
     }),
-    [isAuthenticated, loading]
+    [token]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 }
