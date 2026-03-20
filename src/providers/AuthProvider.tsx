@@ -1,23 +1,25 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 
-export type AuthUser = {
+type AuthUser = {
   id: string;
   email: string;
 } | null;
 
 type AuthContextValue = {
   user: AuthUser;
-  setUser: React.Dispatch<React.SetStateAction<AuthUser>>;
+  setUser: (user: AuthUser) => void;
+  loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(null);
-  const value = useMemo(() => ({ user, setUser }), [user]);
+  const [loading] = useState(false);
+
+  const value = useMemo(() => ({ user, setUser, loading }), [user, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
