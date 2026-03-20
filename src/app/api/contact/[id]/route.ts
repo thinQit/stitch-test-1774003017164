@@ -4,7 +4,9 @@ import { db } from '@/lib/db';
 import { getTokenFromHeader, verifyToken } from '@/lib/auth';
 
 const updateSchema = z.object({
-  email: z.string().email().optional()
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  message: z.string().min(1).optional()
 });
 
 function getUserIdFromRequest(request: NextRequest): string | null {
@@ -27,14 +29,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const subscriber = await db.subscriber.findUnique({ where: { id: params.id } });
-  if (!subscriber) {
-    return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+  const message = await db.contactMessage.findUnique({ where: { id: params.id } });
+  if (!message) {
+    return NextResponse.json({ success: false, error: 'Contact message not found' }, { status: 404 });
   }
 
   return NextResponse.json({
     success: true,
-    data: { id: subscriber.id, email: subscriber.email, created_at: subscriber.created_at.toISOString() }
+    data: {
+      id: message.id,
+      name: message.name,
+      email: message.email,
+      message: message.message,
+      received_at: message.received_at.toISOString()
+    }
   });
 }
 
@@ -46,17 +54,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   try {
     const body = updateSchema.parse(await request.json());
-    const existing = await db.subscriber.findUnique({ where: { id: params.id } });
+    const existing = await db.contactMessage.findUnique({ where: { id: params.id } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Contact message not found' }, { status: 404 });
     }
-    const subscriber = await db.subscriber.update({
+
+    const message = await db.contactMessage.update({
       where: { id: params.id },
-      data: { email: body.email ?? existing.email }
+      data: {
+        name: body.name ?? existing.name,
+        email: body.email ?? existing.email,
+        message: body.message ?? existing.message
+      }
     });
+
     return NextResponse.json({
       success: true,
-      data: { id: subscriber.id, email: subscriber.email, created_at: subscriber.created_at.toISOString() }
+      data: {
+        id: message.id,
+        name: message.name,
+        email: message.email,
+        message: message.message,
+        received_at: message.received_at.toISOString()
+      }
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Invalid request';
@@ -70,11 +90,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const existing = await db.subscriber.findUnique({ where: { id: params.id } });
+  const existing = await db.contactMessage.findUnique({ where: { id: params.id } });
   if (!existing) {
-    return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'Contact message not found' }, { status: 404 });
   }
 
-  await db.subscriber.delete({ where: { id: params.id } });
+  await db.contactMessage.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true, data: null });
 }

@@ -4,7 +4,9 @@ import { db } from '@/lib/db';
 import { getTokenFromHeader, verifyToken } from '@/lib/auth';
 
 const updateSchema = z.object({
-  email: z.string().email().optional()
+  hero_title: z.string().optional(),
+  hero_subtitle: z.string().optional(),
+  footer_text: z.string().optional()
 });
 
 function getUserIdFromRequest(request: NextRequest): string | null {
@@ -27,15 +29,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const subscriber = await db.subscriber.findUnique({ where: { id: params.id } });
-  if (!subscriber) {
-    return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+  const content = await db.siteContent.findUnique({ where: { id: params.id } });
+  if (!content) {
+    return NextResponse.json({ success: false, error: 'Content not found' }, { status: 404 });
   }
 
-  return NextResponse.json({
-    success: true,
-    data: { id: subscriber.id, email: subscriber.email, created_at: subscriber.created_at.toISOString() }
-  });
+  return NextResponse.json({ success: true, data: content });
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
@@ -46,18 +45,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   try {
     const body = updateSchema.parse(await request.json());
-    const existing = await db.subscriber.findUnique({ where: { id: params.id } });
+    const existing = await db.siteContent.findUnique({ where: { id: params.id } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Content not found' }, { status: 404 });
     }
-    const subscriber = await db.subscriber.update({
-      where: { id: params.id },
-      data: { email: body.email ?? existing.email }
-    });
-    return NextResponse.json({
-      success: true,
-      data: { id: subscriber.id, email: subscriber.email, created_at: subscriber.created_at.toISOString() }
-    });
+
+    const content = await db.siteContent.update({ where: { id: params.id }, data: body });
+    return NextResponse.json({ success: true, data: content });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Invalid request';
     return NextResponse.json({ success: false, error: message }, { status: 400 });
@@ -70,11 +64,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const existing = await db.subscriber.findUnique({ where: { id: params.id } });
+  const existing = await db.siteContent.findUnique({ where: { id: params.id } });
   if (!existing) {
-    return NextResponse.json({ success: false, error: 'Subscriber not found' }, { status: 404 });
+    return NextResponse.json({ success: false, error: 'Content not found' }, { status: 404 });
   }
 
-  await db.subscriber.delete({ where: { id: params.id } });
+  await db.siteContent.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true, data: null });
 }

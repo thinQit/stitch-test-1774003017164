@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { getTokenFromHeader, verifyToken } from '@/lib/auth';
 
-const featureSchema = z.object({
-  title: z.string().min(1),
-  subtitle: z.string().optional(),
-  description: z.string().min(1)
+const contentSchema = z.object({
+  hero_title: z.string().optional(),
+  hero_subtitle: z.string().optional(),
+  footer_text: z.string().optional()
 });
 
 function getUserIdFromRequest(request: NextRequest): string | null {
@@ -23,30 +23,36 @@ function getUserIdFromRequest(request: NextRequest): string | null {
   }
 }
 
-function parseNumber(value: string | null, fallback: number): number {
-  const parsed = value ? Number(value) : NaN;
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+export async function GET(_request: NextRequest) {
+  const content = await db.siteContent.findFirst();
+  if (!content) {
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: null,
+        hero_title: null,
+        hero_subtitle: null,
+        footer_text: null
+      }
+    });
+  }
+  return NextResponse.json({ success: true, data: content });
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const limit = parseNumber(searchParams.get('limit'), 50);
-  const offset = parseNumber(searchParams.get('offset'), 0);
-
-  const features = await db.feature.findMany({ skip: offset, take: limit });
-  return NextResponse.json({ success: true, data: features });
-}
-
-export async function POST(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const body = featureSchema.parse(await request.json());
-    const feature = await db.feature.create({ data: body });
-    return NextResponse.json({ success: true, data: feature }, { status: 201 });
+    const body = contentSchema.parse(await request.json());
+    const existing = await db.siteContent.findFirst();
+    const content = existing
+      ? await db.siteContent.update({ where: { id: existing.id }, data: body })
+      : await db.siteContent.create({ data: body });
+
+    return NextResponse.json({ success: true, data: content });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Invalid request';
     return NextResponse.json({ success: false, error: message }, { status: 400 });

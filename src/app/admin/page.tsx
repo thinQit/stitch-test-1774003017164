@@ -1,339 +1,359 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Button from '@/components/ui/Button';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { useAuth } from '@/providers/AuthProvider';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Spinner from '@/components/ui/Spinner';
-import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
-import type { Lead, Plan } from '@/types';
-import { useAuth } from '@/providers/AuthProvider';
-
-const emptyPlanForm = { name: '', price_monthly: '', billing_description: '', features: '', is_custom: false };
-
-type PlanFormState = typeof emptyPlanForm;
+import type { Feature, PricingPlan, SiteContent } from '@/types';
+import type React from 'react';
 
 export default function AdminPage() {
-  const { user, login, logout, loading: authLoading } = useAuth();
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<PlanFormState>(emptyPlanForm);
-  const [authForm, setAuthForm] = useState({ email: '', password: '' });
-  const [authError, setAuthError] = useState('');
-
-  const featureList = useMemo(
-    () => form.features.split(',').map((item) => item.trim()).filter(Boolean),
-    [form.features]
-  );
+  const { login, isAuthenticated, loading } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [pricing, setPricing] = useState<PricingPlan[]>([]);
+  const [content, setContent] = useState<SiteContent | null>(null);
+  const [featureForm, setFeatureForm] = useState({ id: '', title: '', subtitle: '', description: '' });
+  const [pricingForm, setPricingForm] = useState({ id: '', name: '', price_per_month: '', currency: 'USD', features: '', is_custom_contact: false });
+  const [contentForm, setContentForm] = useState({ hero_title: '', hero_subtitle: '', footer_text: '' });
+  const [message, setMessage] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const loadData = async () => {
-    setLoading(true);
-    setError(null);
+    setDataLoading(true);
+    setDataError(null);
     try {
-      const [plansResponse, leadsResponse] = await Promise.all([
-        api.get<{ plans: Plan[] }>('/api/plans'),
-        api.get<{ leads: Lead[] }>('/api/leads')
+      const [f, p, c] = await Promise.all([
+        api.get<Feature[]>('/api/features'),
+        api.get<PricingPlan[]>('/api/pricing'),
+        api.get<SiteContent>('/api/content')
       ]);
-      setPlans(plansResponse?.plans || []);
-      setLeads(leadsResponse?.leads || []);
-    } catch (_error) {
-      setError('Unable to load admin data.');
-      setPlans([]);
-      setLeads([]);
+      if (f.error || p.error || c.error) {
+        setDataError(f.error || p.error || c.error || 'Failed to load admin data');
+      }
+      setFeatures(f.data ?? []);
+      setPricing(p.data ?? []);
+      if (c.data) {
+        setContent(c.data);
+        setContentForm({
+          hero_title: c.data.hero_title || '',
+          hero_subtitle: c.data.hero_subtitle || '',
+          footer_text: c.data.footer_text || ''
+        });
+      }
+    } catch (err: unknown) {
+      setDataError(err instanceof Error ? err.message : 'Failed to load admin data');
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       loadData();
     }
-  }, [user]);
+  }, [isAuthenticated]);
 
-  const handleCreatePlan = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-    const priceValue = form.price_monthly === '' ? null : Number(form.price_monthly);
-    const payload = {
-      name: form.name,
-      price_monthly: form.is_custom ? null : priceValue,
-      billing_description: form.billing_description,
-      features: featureList,
-      is_custom: form.is_custom
-    };
-    try {
-      await api.post('/api/plans', payload);
-      setForm(emptyPlanForm);
-      loadData();
-    } catch (_error) {
-      setError('Unable to create plan.');
+    setAuthError(null);
+    const result = await login(email, password);
+    if (!result.success) {
+      setAuthError(result.message || 'Login failed');
     }
   };
 
-  const handleUpdatePlan = async (plan: Plan) => {
-    try {
-      await api.put(`/api/plans/${plan.id}`, {
-        name: plan.name,
-        price_monthly: plan.price_monthly,
-        billing_description: plan.billing_description,
-        features: plan.features,
-        is_custom: plan.is_custom
+  const handleFeatureSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMessage(null);
+    if (featureForm.id) {
+      const res = await api.put(`/api/features/${featureForm.id}`, {
+        title: featureForm.title,
+        subtitle: featureForm.subtitle,
+        description: featureForm.description
       });
-      loadData();
-    } catch (_error) {
-      setError('Unable to update plan.');
+      if (res.error) return setMessage(res.error);
+    } else {
+      const res = await api.post('/api/features', {
+        title: featureForm.title,
+        subtitle: featureForm.subtitle,
+        description: featureForm.description
+      });
+      if (res.error) return setMessage(res.error);
     }
+    setFeatureForm({ id: '', title: '', subtitle: '', description: '' });
+    await loadData();
   };
 
-  const handleDeletePlan = async (planId: string) => {
-    try {
-      await api.delete(`/api/plans/${planId}`);
-      loadData();
-    } catch (_error) {
-      setError('Unable to delete plan.');
-    }
+  const handleFeatureEdit = (feature: Feature) => {
+    setFeatureForm({
+      id: feature.id || '',
+      title: feature.title || '',
+      subtitle: feature.subtitle || '',
+      description: feature.description || ''
+    });
   };
 
-  const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFeatureDelete = async (id: string) => {
+    const res = await api.delete(`/api/features/${id}`);
+    if (res.error) return setMessage(res.error);
+    await loadData();
+  };
+
+  const handlePricingSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setAuthError('');
-    try {
-      await login(authForm.email, authForm.password);
-    } catch (_error) {
-      setAuthError('Invalid credentials.');
-    }
+    const res = await api.post('/api/pricing', {
+      id: pricingForm.id || undefined,
+      name: pricingForm.name,
+      price_per_month: pricingForm.price_per_month ? Number(pricingForm.price_per_month) : null,
+      currency: pricingForm.currency,
+      features: pricingForm.features.split(',').map((item) => item.trim()).filter(Boolean),
+      is_custom_contact: pricingForm.is_custom_contact
+    });
+    if (res.error) return setMessage(res.error);
+    setPricingForm({ id: '', name: '', price_per_month: '', currency: 'USD', features: '', is_custom_contact: false });
+    await loadData();
   };
 
-  if (authLoading) {
+  const handlePricingEdit = (plan: PricingPlan) => {
+    setPricingForm({
+      id: plan.id || '',
+      name: plan.name || '',
+      price_per_month: plan.price_per_month ? String(plan.price_per_month) : '',
+      currency: plan.currency || 'USD',
+      features: (plan.features || []).join(', '),
+      is_custom_contact: Boolean(plan.is_custom_contact)
+    });
+  };
+
+  const handleContentSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const res = await api.put('/api/content', contentForm);
+    if (res.error) return setMessage(res.error);
+    await loadData();
+  };
+
+  if (loading) {
     return (
-      <main className="mx-auto flex max-w-6xl justify-center px-6 py-20">
-        <Spinner />
-      </main>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner label="Loading" />
+      </div>
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
-      <main className="mx-auto max-w-md px-6 py-16">
+      <div className="mx-auto max-w-md px-6 py-16">
         <Card>
-          <h1 className="text-2xl font-semibold">Admin Sign In</h1>
-          <p className="mt-2 text-sm text-slate-600">Use your admin credentials to manage plans and leads.</p>
-          <form onSubmit={handleAuthSubmit} className="mt-6 space-y-4">
-            <Input
-              label="Email"
-              name="email"
-              type="email"
-              required
-              value={authForm.email}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setAuthForm((prev) => ({ ...prev, email: event.target.value }))
-              }
-            />
-            <Input
-              label="Password"
-              name="password"
-              type="password"
-              required
-              value={authForm.password}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setAuthForm((prev) => ({ ...prev, password: event.target.value }))
-              }
-            />
-            <Button type="submit">Sign in</Button>
-            {authError && <p className="text-sm text-error">{authError}</p>}
-          </form>
+          <Card.Header>
+            <h1 className="text-2xl font-semibold text-foreground">Admin login</h1>
+            <p className="text-sm text-slate-600">Sign in to manage ProjectFlow content.</p>
+          </Card.Header>
+          <Card.Content>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
+                required
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
+                required
+              />
+              <Button type="submit" className="w-full">
+                Sign in
+              </Button>
+              {authError && <p className="text-sm text-error">{authError}</p>}
+            </form>
+          </Card.Content>
         </Card>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-sm text-slate-600">Manage pricing plans and review captured leads.</p>
-        </div>
-        <Button variant="ghost" onClick={logout}>
-          Sign out
-        </Button>
+    <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground">Admin dashboard</h1>
+        <p className="text-slate-600">Manage features, pricing, and site content.</p>
       </div>
-
-      {error && <p className="mt-6 text-sm text-error">{error}</p>}
-
-      <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card>
-          <h2 className="text-xl font-semibold">Create a pricing plan</h2>
-          <form onSubmit={handleCreatePlan} className="mt-6 space-y-4">
-            <Input
-              label="Plan name"
-              name="name"
-              required
-              value={form.name}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setForm((prev) => ({ ...prev, name: event.target.value }))
-              }
-            />
-            <Input
-              label="Monthly price"
-              name="price"
-              type="number"
-              value={form.price_monthly}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setForm((prev) => ({ ...prev, price_monthly: event.target.value }))
-              }
-              placeholder="79"
-            />
-            <Input
-              label="Billing description"
-              name="billing_description"
-              value={form.billing_description}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setForm((prev) => ({ ...prev, billing_description: event.target.value }))
-              }
-            />
-            <Input
-              label="Features (comma separated)"
-              name="features"
-              value={form.features}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                setForm((prev) => ({ ...prev, features: event.target.value }))
-              }
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.is_custom}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm((prev) => ({ ...prev, is_custom: event.target.checked }))
-                }
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              Custom/enterprise plan
-            </label>
-            <Button type="submit">Create plan</Button>
-          </form>
-        </Card>
-        <Card>
-          <h2 className="text-xl font-semibold">Captured leads</h2>
-          {loading ? (
-            <div className="mt-6 flex justify-center">
-              <Spinner />
-            </div>
-          ) : leads.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-600">No leads captured yet.</p>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {leads.map((lead) => (
-                <div key={lead.id} className="rounded-lg border border-slate-200 p-4">
-                  <p className="text-sm font-semibold">{lead.email}</p>
-                  <p className="text-xs text-slate-500">
-                    {lead.name || 'Anonymous'} • {lead.source || 'unknown'} •{' '}
-                    {lead.createdAt ? formatDate(lead.createdAt) : 'N/A'}
-                  </p>
-                  {lead.message && <p className="mt-2 text-sm text-slate-700">{lead.message}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-2xl font-semibold">Existing plans</h2>
-        {loading ? (
-          <div className="mt-6 flex justify-center">
-            <Spinner />
-          </div>
-        ) : plans.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-600">No plans available yet.</p>
-        ) : (
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="space-y-4">
+      {message && <p className="mb-6 text-sm text-slate-600">{message}</p>}
+      {dataError && <p className="mb-6 rounded-md border border-error bg-red-50 px-4 py-3 text-sm text-error">{dataError}</p>}
+      {dataLoading ? (
+        <Spinner label="Loading admin data" />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <Card.Header>
+              <h2 className="text-xl font-semibold text-foreground">Feature cards</h2>
+            </Card.Header>
+            <Card.Content>
+              <form onSubmit={handleFeatureSubmit} className="space-y-4">
                 <Input
-                  label="Name"
-                  name={`name-${plan.id}`}
-                  value={plan.name}
+                  label="Title"
+                  value={featureForm.title}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    setPlans((prev) =>
-                      prev.map((item) => (item.id === plan.id ? { ...item, name: event.target.value } : item))
-                    )
+                    setFeatureForm({ ...featureForm, title: event.target.value })
                   }
+                  required
+                />
+                <Input
+                  label="Subtitle"
+                  value={featureForm.subtitle}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setFeatureForm({ ...featureForm, subtitle: event.target.value })
+                  }
+                />
+                <Input
+                  label="Description"
+                  value={featureForm.description}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setFeatureForm({ ...featureForm, description: event.target.value })
+                  }
+                  required
+                />
+                <Button type="submit">{featureForm.id ? 'Update feature' : 'Add feature'}</Button>
+              </form>
+              <div className="mt-6 space-y-3">
+                {!features.length && <p className="text-sm text-slate-500">No feature cards yet.</p>}
+                {features.map((feature) => (
+                  <div key={feature.id} className="rounded-md border border-border p-3">
+                    <p className="font-semibold text-foreground">{feature.title}</p>
+                    <p className="text-sm text-slate-600">{feature.description}</p>
+                    <div className="mt-3 flex gap-3 text-sm">
+                      <button type="button" onClick={() => handleFeatureEdit(feature)} className="text-primary hover:underline">
+                        Edit
+                      </button>
+                      {feature.id && (
+                        <button type="button" onClick={() => handleFeatureDelete(feature.id)} className="text-error hover:underline">
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header>
+              <h2 className="text-xl font-semibold text-foreground">Pricing plans</h2>
+            </Card.Header>
+            <Card.Content>
+              <form onSubmit={handlePricingSubmit} className="space-y-4">
+                <Input
+                  label="Plan name"
+                  value={pricingForm.name}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setPricingForm({ ...pricingForm, name: event.target.value })
+                  }
+                  required
                 />
                 <Input
                   label="Monthly price"
-                  name={`price-${plan.id}`}
                   type="number"
-                  value={plan.price_monthly ?? ''}
+                  value={pricingForm.price_per_month}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    setPlans((prev) =>
-                      prev.map((item) =>
-                        item.id === plan.id
-                          ? {
-                              ...item,
-                              price_monthly: event.target.value === '' ? null : Number(event.target.value)
-                            }
-                          : item
-                      )
-                    )
+                    setPricingForm({ ...pricingForm, price_per_month: event.target.value })
                   }
                 />
                 <Input
-                  label="Billing description"
-                  name={`billing-${plan.id}`}
-                  value={plan.billing_description ?? ''}
+                  label="Currency"
+                  value={pricingForm.currency}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    setPlans((prev) =>
-                      prev.map((item) =>
-                        item.id === plan.id ? { ...item, billing_description: event.target.value } : item
-                      )
-                    )
+                    setPricingForm({ ...pricingForm, currency: event.target.value })
                   }
                 />
                 <Input
                   label="Features (comma separated)"
-                  name={`features-${plan.id}`}
-                  value={(plan.features || []).join(', ')}
+                  value={pricingForm.features}
                   onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                    setPlans((prev) =>
-                      prev.map((item) =>
-                        item.id === plan.id
-                          ? { ...item, features: event.target.value.split(',').map((feature) => feature.trim()) }
-                          : item
-                      )
-                    )
+                    setPricingForm({ ...pricingForm, features: event.target.value })
                   }
                 />
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-slate-600">
                   <input
                     type="checkbox"
-                    checked={plan.is_custom ?? false}
+                    checked={pricingForm.is_custom_contact}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                      setPlans((prev) =>
-                        prev.map((item) =>
-                          item.id === plan.id ? { ...item, is_custom: event.target.checked } : item
-                        )
-                      )
+                      setPricingForm({ ...pricingForm, is_custom_contact: event.target.checked })
                     }
-                    className="h-4 w-4 rounded border-slate-300"
+                    className="h-4 w-4 rounded border-border"
                   />
-                  Custom plan
+                  Custom contact plan
                 </label>
-                <div className="flex gap-3">
-                  <Button onClick={() => handleUpdatePlan(plan)}>Update</Button>
-                  <Button variant="destructive" onClick={() => handleDeletePlan(plan.id)}>
-                    Delete
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
+                <Button type="submit">{pricingForm.id ? 'Update plan' : 'Add plan'}</Button>
+              </form>
+              <div className="mt-6 space-y-3">
+                {!pricing.length && <p className="text-sm text-slate-500">No pricing plans yet.</p>}
+                {pricing.map((plan) => (
+                  <div key={plan.id} className="rounded-md border border-border p-3">
+                    <p className="font-semibold text-foreground">{plan.name}</p>
+                    <p className="text-sm text-slate-600">
+                      {plan.is_custom_contact ? 'Custom pricing' : `$${plan.price_per_month}/mo`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handlePricingEdit(plan)}
+                      className="mt-2 text-sm text-primary hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card.Content>
+          </Card>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <Card>
+          <Card.Header>
+            <h2 className="text-xl font-semibold text-foreground">Site content</h2>
+            <p className="text-sm text-slate-600">Update hero and footer copy for the marketing site.</p>
+          </Card.Header>
+          <Card.Content>
+            <form onSubmit={handleContentSubmit} className="space-y-4">
+              <Input
+                label="Hero title"
+                value={contentForm.hero_title}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setContentForm({ ...contentForm, hero_title: event.target.value })
+                }
+              />
+              <Input
+                label="Hero subtitle"
+                value={contentForm.hero_subtitle}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setContentForm({ ...contentForm, hero_subtitle: event.target.value })
+                }
+              />
+              <Input
+                label="Footer text"
+                value={contentForm.footer_text}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setContentForm({ ...contentForm, footer_text: event.target.value })
+                }
+              />
+              <Button type="submit">Save content</Button>
+            </form>
+            {!content && <p className="mt-4 text-sm text-slate-500">No content set yet.</p>}
+          </Card.Content>
+        </Card>
+      </div>
+    </div>
   );
 }

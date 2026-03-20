@@ -1,53 +1,58 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
-import Spinner from '@/components/ui/Spinner';
+import Link from 'next/link';
 import { api } from '@/lib/api';
-import type { Plan } from '@/types';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Spinner from '@/components/ui/Spinner';
+import type { PricingPlan } from '@/types';
 
-const fallbackPlans: Plan[] = [
+const fallbackPricing: PricingPlan[] = [
   {
     id: 'starter',
     name: 'Starter',
-    price_monthly: 29,
-    billing_description: 'For growing teams getting organized fast.',
-    features: ['Up to 5 projects', 'AI scheduling', 'Weekly reports'],
-    is_custom: false
+    price_per_month: 29,
+    currency: 'USD',
+    features: ['Smart scheduling', 'Email reports', 'Up to 5 projects'],
+    is_custom_contact: false
   },
   {
     id: 'pro',
     name: 'Pro',
-    price_monthly: 79,
-    billing_description: 'For scaling teams that need advanced insights.',
-    features: ['Unlimited projects', 'Automation workflows', 'Priority support'],
-    is_custom: false
+    price_per_month: 79,
+    currency: 'USD',
+    features: ['Everything in Starter', 'Team insights', 'Unlimited projects'],
+    is_custom_contact: false
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price_monthly: null,
-    billing_description: 'Custom security, SLAs, and onboarding.',
-    features: ['Dedicated success manager', 'Custom integrations', 'On-prem options'],
-    is_custom: true
+    price_per_month: null,
+    currency: 'USD',
+    features: ['Custom workflows', 'Dedicated success', 'Security reviews'],
+    is_custom_contact: true
   }
 ];
 
 export default function PricingPage() {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [pricing, setPricing] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await api.get<{ plans: Plan[] }>('/api/plans');
-        setPlans(response?.plans?.length ? response.plans : fallbackPlans);
-      } catch (_error) {
-        setError('Unable to load pricing. Showing standard plans.');
-        setPlans(fallbackPlans);
+        const res = await api.get<PricingPlan[]>('/api/pricing');
+        if (res.error) {
+          setError(res.error);
+        }
+        setPricing(res.data ?? []);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load pricing');
       } finally {
         setLoading(false);
       }
@@ -55,90 +60,87 @@ export default function PricingPage() {
     load();
   }, []);
 
+  const pricingItems = useMemo(() => (pricing.length ? pricing : fallbackPricing), [pricing]);
+
   return (
-    <main className="bg-background">
-      <section className="relative overflow-hidden bg-slate-950 text-white">
-        <div className="absolute inset-0">
+    <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="grid gap-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
+        <div>
+          <h1 className="text-4xl font-bold text-foreground">ProjectFlow pricing</h1>
+          <p className="mt-4 text-slate-600">Flexible tiers for every stage of growth.</p>
+        </div>
+        <div className="overflow-hidden rounded-3xl border border-border">
           <Image
             src="/images/hero.jpg"
-            alt="ProjectFlow pricing hero"
+            alt="Pricing overview"
             width={1200}
             height={675}
-            className="h-full w-full object-cover opacity-30"
-            priority
+            className="h-full w-full object-cover"
           />
         </div>
-        <div className="relative mx-auto max-w-6xl px-6 py-20 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Pricing</p>
-          <h1 className="mt-4 text-4xl font-bold md:text-5xl">Choose the plan that matches your momentum</h1>
-          <p className="mt-4 text-white/70">
-            Every plan includes AI scheduling, automated reporting, and secure collaboration.
-          </p>
+      </div>
+
+      {error && (
+        <div className="mt-8 rounded-md border border-error bg-red-50 px-4 py-3 text-sm text-error">{error}</div>
+      )}
+
+      {loading ? (
+        <div className="mt-12 flex justify-center">
+          <Spinner label="Loading pricing" />
         </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        {error && <p className="text-center text-sm text-slate-500">{error}</p>}
-        {loading ? (
-          <div className="mt-10 flex justify-center">
-            <Spinner />
-          </div>
-        ) : plans.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-slate-600">Pricing details are being finalized.</p>
-        ) : (
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="flex h-full flex-col justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold">{plan.name}</h2>
-                  <p className="mt-3 text-4xl font-bold">
-                    {plan.is_custom || plan.price_monthly === null ? 'Custom' : `$${plan.price_monthly}`}
-                    {!plan.is_custom && plan.price_monthly !== null && (
-                      <span className="text-base font-medium text-slate-500">/mo</span>
-                    )}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-600">{plan.billing_description}</p>
-                  <ul className="mt-6 space-y-2 text-sm text-slate-700">
-                    {(plan.features || []).map((feature) => (
-                      <li key={feature} className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <Button asChild className="mt-8">
-                  <a href={plan.is_custom ? '/contact' : '/pricing'}>{plan.is_custom ? 'Contact sales' : 'Get started'}</a>
-                </Button>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="bg-muted">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Enterprise ready</p>
-            <h3 className="mt-3 text-3xl font-bold">Need a tailored rollout?</h3>
-            <p className="mt-2 text-slate-600">
-              Enterprise onboarding, security reviews, and custom integrations are available for large PMOs.
+      ) : (
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          {!pricing.length && (
+            <p className="md:col-span-3 text-center text-sm text-slate-500">
+              No custom pricing yet. Showing default tiers.
             </p>
-            <Button asChild className="mt-6" size="lg">
-              <a href="/contact">Schedule a demo</a>
-            </Button>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-4">
-            <Image
-              src="/images/cta.jpg"
-              alt="ProjectFlow enterprise collaboration"
-              width={1200}
-              height={675}
-              className="w-full rounded-2xl object-cover"
-            />
-          </div>
+          )}
+          {pricingItems.map((plan) => (
+            <Card key={plan.id} className="flex h-full flex-col">
+              <Card.Header>
+                <h2 className="text-xl font-semibold text-foreground">{plan.name}</h2>
+                <p className="mt-2 text-3xl font-bold text-foreground">
+                  {plan.is_custom_contact ? 'Custom' : `$${plan.price_per_month}/mo`}
+                </p>
+              </Card.Header>
+              <Card.Content className="flex-1">
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {(plan.features || []).map((item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-primary" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </Card.Content>
+              <Card.Footer>
+                <Button asChild className="w-full">
+                  <Link href={`/signup?plan=${plan.id}`}>{plan.is_custom_contact ? 'Contact sales' : 'Choose ' + plan.name}</Link>
+                </Button>
+              </Card.Footer>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <section className="mt-16 grid gap-10 rounded-3xl bg-slate-900 p-10 text-white md:grid-cols-[1.2fr_0.8fr] md:items-center">
+        <div>
+          <h2 className="text-2xl font-semibold">Need enterprise scale?</h2>
+          <p className="mt-3 text-slate-200">We build custom rollouts, security reviews, and AI governance for large teams.</p>
+          <Button asChild className="mt-6">
+            <Link href="/signup?plan=enterprise">Talk to sales</Link>
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-800">
+          <Image
+            src="/images/cta.jpg"
+            alt="Enterprise teams collaborating"
+            width={1200}
+            height={675}
+            className="h-full w-full object-cover"
+          />
         </div>
       </section>
-    </main>
+    </div>
   );
 }

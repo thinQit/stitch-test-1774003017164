@@ -5,5 +5,5 @@ out
 .env.local
 .env.production
 .env.development
+*.log
 prisma/dev.db
-.DS_Store

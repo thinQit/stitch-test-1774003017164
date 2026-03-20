@@ -1,42 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import db from '@/lib/db';
+import { db } from '@/lib/db';
 import { hashPassword, signToken } from '@/lib/auth';
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
-  name: z.string().optional()
+  password: z.string().min(6)
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = registerSchema.parse(body);
-
-    const existing = await db.user.findUnique({ where: { email: parsed.email } });
+    const body = registerSchema.parse(await request.json());
+    const existing = await db.user.findUnique({ where: { email: body.email } });
     if (existing) {
-      return NextResponse.json({ success: false, error: 'User already exists' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'User already exists' }, { status: 409 });
     }
-
-    const passwordHash = await hashPassword(parsed.password);
-    const user = await db.user.create({
-      data: {
-        email: parsed.email,
-        name: parsed.name,
-        passwordHash,
-        role: 'admin'
-      }
-    });
-
-    const token = signToken({ userId: user.id, email: user.email, role: user.role });
-    const response = NextResponse.json({
-      success: true,
-      data: { token, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
-    });
-    response.cookies.set('projectflow_token', token, { httpOnly: true, sameSite: 'lax', path: '/' });
-    return response;
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
+    const passwordHash = await hashPassword(body.password);
+    const user = await db.user.create({ data: { email: body.email, passwordHash } });
+    const token = signToken({ userId: user.id, email: user.email });
+    return NextResponse.json(
+      { success: true, data: { token, userId: user.id, email: user.email } },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Invalid request';
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
 }

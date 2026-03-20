@@ -8,39 +8,45 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   email        String   @unique
-  name         String?
   passwordHash String
-  role         String   @default("admin")
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-model Plan {
-  id                  String  @id @default(cuid())
-  name                String
-  price_monthly       Float?
-  billing_description String?
-  features            String  @default("[]")
-  is_custom           Boolean @default(false)
-}
-
-model Lead {
-  id        String   @id @default(cuid())
-  email     String
-  name      String?
-  company   String?
-  message   String?
-  source    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Feature {
-  id       String  @id @default(cuid())
-  title    String
-  subtitle String
-  icon     String
-  order    Int     @default(0)
+  id          String  @id @default(uuid())
+  title       String?
+  subtitle    String?
+  description String?
+}
+
+model PricingPlan {
+  id               String  @id @default(uuid())
+  name             String?
+  price_per_month  Float?
+  currency         String?
+  features         String  @default("[]")
+  is_custom_contact Boolean @default(false)
+}
+
+model Subscriber {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  created_at DateTime @default(now())
+}
+
+model ContactMessage {
+  id          String   @id @default(uuid())
+  name        String?
+  email       String?
+  message     String?
+  received_at DateTime @default(now())
+}
+
+model SiteContent {
+  id            String @id @default(uuid())
+  hero_title    String?
+  hero_subtitle String?
+  footer_text   String?
 }

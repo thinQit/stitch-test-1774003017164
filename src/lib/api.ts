@@ -1,55 +1,63 @@
-export type ApiError = {
+export type ApiResponse<T> = {
+  data?: T;
+  error?: string;
   status: number;
-  message: string;
 };
 
-type ApiFetchOptions = Omit<RequestInit, 'body'> & {
-  body?: unknown;
-};
-
-const getBaseUrl = (): string => {
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const parseJson = (text: string) => {
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
   }
-  return process.env.NEXT_PUBLIC_API_BASE_URL || '';
 };
 
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const baseUrl = getBaseUrl();
-  const headers = new Headers(options.headers);
+const request = async <T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+    const text = await res.text();
+    const json = parseJson(text) as { data?: T; error?: string; message?: string } | undefined;
 
-  if (!headers.has('Content-Type') && options.body !== undefined) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
-
-  if (!response.ok) {
-    let message = 'Request failed';
-    try {
-      const data = (await response.json()) as { message?: string };
-      if (data?.message) message = data.message;
-    } catch {
-      // ignore JSON parse errors
+    if (!res.ok) {
+      return {
+        error: json?.error || json?.message || res.statusText || 'Request failed',
+        status: res.status
+      };
     }
-    const error: ApiError = { status: response.status, message };
-    throw error;
-  }
 
-  if (response.status === 204) {
-    return {} as T;
+    return {
+      data: (json?.data ?? json) as T | undefined,
+      status: res.status
+    };
+  } catch (err: unknown) {
+    return {
+      error: err instanceof Error ? err.message : 'Network error',
+      status: 500
+    };
   }
-
-  return (await response.json()) as T;
-}
+};
 
 export const api = {
-  get: async <T>(path: string, options: ApiFetchOptions = {}) =>
-    apiFetch<T>(path, { ...options, method: 'GET' }),
-  post: async <T>(path: string, body?: unknown, options: ApiFetchOptions = {}) =>
-    apiFetch<T>(path, { ...options, method: 'POST', body }),
+  get: <T>(url: string) => request<T>(url),
+  post: <T>(url: string, body?: unknown) =>
+    request<T>(url, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    }),
+  put: <T>(url: string, body?: unknown) =>
+    request<T>(url, {
+      method: 'PUT',
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    }),
+  delete: <T>(url: string) =>
+    request<T>(url, {
+      method: 'DELETE'
+    })
 };
