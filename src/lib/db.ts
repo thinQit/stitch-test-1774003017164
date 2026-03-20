@@ -1,40 +1,31 @@
 import { PrismaClient } from '@prisma/client';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
-type GlobalPrisma = typeof globalThis & { prisma?: PrismaClient };
+const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const globalForPrisma = globalThis as GlobalPrisma;
-
-const createMockModel = () =>
-  new Proxy(
-    {},
-    {
-      get: (_target, prop) => {
-        if (prop === 'findMany') return async () => [];
-        if (prop === 'findUnique' || prop === 'findFirst') return async () => null;
-        if (prop === 'create' || prop === 'update') {
-          return async (args: { data?: unknown }) => args?.data ?? null;
-        }
-        if (prop === 'delete') return async () => null;
-        return async () => null;
-      }
-    }
-  );
-
-const createMockPrisma = () =>
-  new Proxy(
-    {},
-    {
-      get: () => createMockModel()
-    }
-  ) as PrismaClient;
-
-const prisma = process.env.DATABASE_URL
+const prismaClient = !isBuildPhase
   ? globalForPrisma.prisma ?? new PrismaClient()
-  : createMockPrisma();
+  : null;
 
-if (process.env.NODE_ENV !== 'production' && process.env.DATABASE_URL) {
-  globalForPrisma.prisma = prisma;
+if (!isBuildPhase && process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prismaClient ?? undefined;
 }
 
-export const db = prisma;
-export default prisma;
+const mockModel = new Proxy(
+  {},
+  {
+    get: () => async () => []
+  }
+);
+
+const mockDb = new Proxy(
+  {},
+  {
+    get: () => mockModel
+  }
+) as unknown as PrismaClient;
+
+export const db = (isBuildPhase ? mockDb : prismaClient) as PrismaClient;
+
+export default db;
