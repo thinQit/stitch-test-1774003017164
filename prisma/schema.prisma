@@ -28,6 +28,7 @@ model PricingTier {
   name         String
   monthlyPrice Float
   isCustom     Boolean @default(false)
+  // SQLite does not support Json fields in Prisma. Store as String.
   features     String
 }
 
