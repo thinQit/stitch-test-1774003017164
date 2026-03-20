@@ -28,7 +28,7 @@ model PricingTier {
   name         String
   monthlyPrice Float
   isCustom     Boolean @default(false)
-  features     Json
+  features     String
 }
 
 model Subscriber {
