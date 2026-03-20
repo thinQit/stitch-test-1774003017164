@@ -1,32 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import db from '@/lib/db';
+import { db } from '@/lib/db';
+import { assertAdmin } from '@/lib/admin';
 
 const schema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  icon: z.string().min(1),
-  highlightColor: z.string().min(1)
+  id: z.string().optional(),
+  title: z.string().min(1).optional(),
+  summary: z.string().min(1).optional(),
+  icon: z.string().min(1).optional()
 });
 
 export async function GET(_request: NextRequest) {
   try {
     const features = await db.feature.findMany();
-    return NextResponse.json({ success: true, data: { features } });
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Unable to fetch features' }, { status: 500 });
+    return NextResponse.json({ success: true, data: features });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load features';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = schema.parse(body);
-
-    const feature = await db.feature.create({ data: parsed });
-
+    assertAdmin(request);
+    const data = schema.parse(await request.json());
+    const feature = await db.feature.create({
+      data: {
+        id: data.id,
+        title: data.title ?? null,
+        summary: data.summary ?? null,
+        icon: data.icon ?? null
+      }
+    });
     return NextResponse.json({ success: true, data: feature }, { status: 201 });
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Unable to create feature' }, { status: 400 });
+  } catch (error: unknown) {
+    const status = (error as Error & { status?: number }).status ?? 400;
+    const message = error instanceof Error ? error.message : 'Invalid request';
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }

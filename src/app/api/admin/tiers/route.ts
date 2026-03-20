@@ -4,19 +4,31 @@ import { db } from '@/lib/db';
 import { assertAdmin } from '@/lib/admin';
 
 const schema = z.object({
-  email: z.string().email(),
   name: z.string().optional(),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
+  pricePerMonth: z.number().nullable().optional(),
+  currency: z.string().optional(),
+  features: z.array(z.string()).optional(),
+  stripePriceId: z.string().optional(),
+  isCustom: z.boolean().optional()
 });
+
+const parseFeatures = (value: string | null): string[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch (_error) {
+    return [];
+  }
+};
 
 export async function GET(request: NextRequest) {
   try {
     assertAdmin(request);
-    const leads = await db.lead.findMany({ orderBy: { createdAt: 'desc' } });
-    const data = leads.map((lead) => ({
-      ...lead,
-      createdAt: lead.createdAt.toISOString()
+    const tiers = await db.pricingTier.findMany();
+    const data = tiers.map((tier) => ({
+      ...tier,
+      features: parseFeatures(tier.features)
     }));
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
@@ -30,18 +42,17 @@ export async function POST(request: NextRequest) {
   try {
     assertAdmin(request);
     const data = schema.parse(await request.json());
-    const lead = await db.lead.create({
+    const tier = await db.pricingTier.create({
       data: {
-        email: data.email,
         name: data.name ?? null,
-        company: data.company ?? null,
-        planInterest: data.planInterest ?? null
+        pricePerMonth: data.pricePerMonth ?? null,
+        currency: data.currency ?? null,
+        features: JSON.stringify(data.features ?? []),
+        stripePriceId: data.stripePriceId ?? null,
+        isCustom: data.isCustom ?? false
       }
     });
-    return NextResponse.json({
-      success: true,
-      data: { ...lead, createdAt: lead.createdAt.toISOString() }
-    }, { status: 201 });
+    return NextResponse.json({ success: true, data: { ...tier, features: data.features ?? [] } }, { status: 201 });
   } catch (error: unknown) {
     const status = (error as Error & { status?: number }).status ?? 400;
     const message = error instanceof Error ? error.message : 'Invalid request';

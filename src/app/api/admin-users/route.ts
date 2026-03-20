@@ -2,21 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { assertAdmin } from '@/lib/admin';
+import { hashPassword } from '@/lib/auth';
 
 const schema = z.object({
   email: z.string().email(),
   name: z.string().optional(),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
+  role: z.string().optional(),
+  password: z.string().min(6).optional()
 });
 
 export async function GET(request: NextRequest) {
   try {
     assertAdmin(request);
-    const leads = await db.lead.findMany({ orderBy: { createdAt: 'desc' } });
-    const data = leads.map((lead) => ({
-      ...lead,
-      createdAt: lead.createdAt.toISOString()
+    const users = await db.adminUser.findMany();
+    const data = users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
     }));
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
@@ -30,17 +33,22 @@ export async function POST(request: NextRequest) {
   try {
     assertAdmin(request);
     const data = schema.parse(await request.json());
-    const lead = await db.lead.create({
+    const existing = await db.adminUser.findUnique({ where: { email: data.email } });
+    if (existing) {
+      return NextResponse.json({ success: false, error: 'Email already exists' }, { status: 409 });
+    }
+    const passwordHash = data.password ? await hashPassword(data.password) : null;
+    const user = await db.adminUser.create({
       data: {
         email: data.email,
         name: data.name ?? null,
-        company: data.company ?? null,
-        planInterest: data.planInterest ?? null
+        role: data.role ?? 'admin',
+        passwordHash
       }
     });
     return NextResponse.json({
       success: true,
-      data: { ...lead, createdAt: lead.createdAt.toISOString() }
+      data: { id: user.id, email: user.email, name: user.name, role: user.role }
     }, { status: 201 });
   } catch (error: unknown) {
     const status = (error as Error & { status?: number }).status ?? 400;

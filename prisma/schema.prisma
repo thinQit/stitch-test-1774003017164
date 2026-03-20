@@ -7,43 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime @default(now())
+model PricingTier {
+  id            String  @id @default(cuid())
+  name          String?
+  pricePerMonth Float?
+  currency      String?
+  features      String?
+  stripePriceId String?
+  isCustom      Boolean @default(false)
 }
 
 model Feature {
-  id             String @id @default(cuid())
-  title          String
-  description    String
-  icon           String
-  highlightColor String
+  id      String  @id @default(cuid())
+  title   String?
+  summary String?
+  icon    String?
 }
 
-model PricingTier {
-  id           String  @id @default(cuid())
-  name         String
-  monthlyPrice Float
-  isCustom     Boolean @default(false)
-  // SQLite does not support Json fields in Prisma. Store as String.
-  features     String
-}
-
-model Subscriber {
+model Lead {
   id           String   @id @default(cuid())
-  email        String   @unique
+  email        String?
+  name         String?
+  company      String?
   planInterest String?
   createdAt    DateTime @default(now())
 }
 
-model EnterpriseContact {
-  id          String   @id @default(cuid())
-  companyName String
-  contactName String
-  email       String
-  message     String
-  createdAt   DateTime @default(now())
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  role         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
 }

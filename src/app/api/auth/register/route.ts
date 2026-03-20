@@ -1,48 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import db from '@/lib/db';
+import { db } from '@/lib/db';
 import { hashPassword, signToken } from '@/lib/auth';
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().optional()
+  name: z.string().min(1).optional(),
+  password: z.string().min(6)
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = schema.parse(body);
-
-    const existing = await db.user.findUnique({ where: { email: parsed.email } });
+    const data = schema.parse(await request.json());
+    const existing = await db.adminUser.findUnique({ where: { email: data.email } });
     if (existing) {
       return NextResponse.json({ success: false, error: 'Email already registered' }, { status: 409 });
     }
 
-    const passwordHash = await hashPassword(parsed.password);
-    const user = await db.user.create({
+    const passwordHash = await hashPassword(data.password);
+    const user = await db.adminUser.create({
       data: {
-        email: parsed.email,
-        name: parsed.name,
+        email: data.email,
+        name: data.name ?? null,
+        role: 'admin',
         passwordHash
       }
     });
 
-    const token = signToken({ userId: user.id, email: user.email });
-
+    const token = signToken({ id: user.id, email: user.email, role: user.role });
     return NextResponse.json({
       success: true,
       data: {
         token,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          createdAt: user.createdAt.toISOString()
-        }
+        user: { id: user.id, email: user.email, name: user.name, role: user.role }
       }
-    });
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Unable to register user' }, { status: 400 });
+    }, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Invalid request';
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
   }
 }

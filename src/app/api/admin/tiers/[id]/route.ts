@@ -22,19 +22,6 @@ const parseFeatures = (value: string | null): string[] => {
   }
 };
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const tier = await db.pricingTier.findUnique({ where: { id: params.id } });
-    if (!tier) {
-      return NextResponse.json({ success: false, error: 'Tier not found' }, { status: 404 });
-    }
-    return NextResponse.json({ success: true, data: { ...tier, features: parseFeatures(tier.features) } });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to load tier';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
-
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     assertAdmin(request);

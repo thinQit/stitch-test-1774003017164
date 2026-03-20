@@ -2,22 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { assertAdmin } from '@/lib/admin';
+import { hashPassword } from '@/lib/auth';
 
 const schema = z.object({
-  email: z.string().email().optional(),
   name: z.string().optional(),
-  company: z.string().optional(),
-  planInterest: z.string().optional()
+  role: z.string().optional(),
+  password: z.string().min(6).optional()
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     assertAdmin(request);
-    const lead = await db.lead.findUnique({ where: { id: params.id } });
-    if (!lead) {
-      return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
+    const user = await db.adminUser.findUnique({ where: { id: params.id } });
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: { ...lead, createdAt: lead.createdAt.toISOString() } });
+    return NextResponse.json({
+      success: true,
+      data: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
   } catch (error: unknown) {
     const status = (error as Error & { status?: number }).status ?? 401;
     const message = error instanceof Error ? error.message : 'Unauthorized';
@@ -29,20 +32,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     assertAdmin(request);
     const data = schema.parse(await request.json());
-    const existing = await db.lead.findUnique({ where: { id: params.id } });
+    const existing = await db.adminUser.findUnique({ where: { id: params.id } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
-    const lead = await db.lead.update({
+    const passwordHash = data.password ? await hashPassword(data.password) : undefined;
+    const user = await db.adminUser.update({
       where: { id: params.id },
       data: {
-        email: data.email ?? undefined,
         name: data.name ?? undefined,
-        company: data.company ?? undefined,
-        planInterest: data.planInterest ?? undefined
+        role: data.role ?? undefined,
+        passwordHash
       }
     });
-    return NextResponse.json({ success: true, data: { ...lead, createdAt: lead.createdAt.toISOString() } });
+    return NextResponse.json({
+      success: true,
+      data: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
   } catch (error: unknown) {
     const status = (error as Error & { status?: number }).status ?? 400;
     const message = error instanceof Error ? error.message : 'Invalid request';
@@ -53,11 +59,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     assertAdmin(request);
-    const existing = await db.lead.findUnique({ where: { id: params.id } });
+    const existing = await db.adminUser.findUnique({ where: { id: params.id } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: 'Lead not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
-    await db.lead.delete({ where: { id: params.id } });
+    await db.adminUser.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true, data: { id: params.id } });
   } catch (error: unknown) {
     const status = (error as Error & { status?: number }).status ?? 400;

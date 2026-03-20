@@ -1,20 +1,41 @@
-import { HTMLAttributes } from 'react';
-import { cn } from '@/lib/utils';
+import * as React from 'react';
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-md border border-border bg-background shadow-sm', className)} {...props} />;
-}
+type CardProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('border-b border-border px-6 py-4', className)} {...props} />;
-}
+type CardSectionProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-6 py-4', className)} {...props} />;
-}
+const cx = (...classes: Array<string | undefined | null | false>) =>
+  classes.filter(Boolean).join(' ');
 
-export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('border-t border-border px-6 py-4', className)} {...props} />;
-}
+const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cx('rounded-2xl border border-border bg-white shadow-sm', className)}
+    {...props}
+  />
+));
+Card.displayName = 'Card';
 
+const CardHeader = React.forwardRef<HTMLDivElement, CardSectionProps>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cx('border-b border-border px-6 py-5', className)} {...props} />
+  )
+);
+CardHeader.displayName = 'CardHeader';
+
+const CardContent = React.forwardRef<HTMLDivElement, CardSectionProps>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cx('px-6 py-5', className)} {...props} />
+  )
+);
+CardContent.displayName = 'CardContent';
+
+const CardFooter = React.forwardRef<HTMLDivElement, CardSectionProps>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cx('border-t border-border px-6 py-5', className)} {...props} />
+  )
+);
+CardFooter.displayName = 'CardFooter';
+
+export { CardContent, CardFooter, CardHeader };
 export default Card;

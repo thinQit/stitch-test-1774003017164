@@ -1,84 +1,53 @@
-"use client";
+'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
-const navLinks = [
+const navItems = [
   { href: '/', label: 'Home' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/enterprise', label: 'Enterprise' },
-  { href: '/privacy', label: 'Privacy & Terms' }
+  { href: '/contact', label: 'Contact' },
+  { href: '/admin', label: 'Admin' }
 ];
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-        <Link href="/" className="text-xl font-semibold text-foreground">
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur border-b border-border">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 lg:px-6" aria-label="Primary">
+        <Link href="/" className="text-xl font-bold text-foreground">
           ProjectFlow
         </Link>
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'text-sm font-medium transition-colors',
-                pathname === link.href ? 'text-primary' : 'text-foreground/80 hover:text-primary'
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <Link
-            href="/pricing"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover"
-          >
-            Get Started
-          </Link>
-        </nav>
         <button
-          className="inline-flex items-center justify-center rounded-md border border-border p-2 text-foreground md:hidden"
+          className="lg:hidden inline-flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm"
           aria-label="Toggle navigation"
-          onClick={() => setOpen((prev) => !prev)}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
         >
           <span className="sr-only">Toggle menu</span>
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <span className="h-0.5 w-5 bg-foreground block" />
+          <span className="h-0.5 w-5 bg-foreground block mt-1" />
+          <span className="h-0.5 w-5 bg-foreground block mt-1" />
         </button>
-      </div>
-      {open && (
-        <div className="border-t border-border bg-background md:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  'text-sm font-medium',
-                  pathname === link.href ? 'text-primary' : 'text-foreground/80'
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/pricing"
-              className="rounded-md bg-primary px-4 py-2 text-center text-sm font-semibold text-white"
-              onClick={() => setOpen(false)}
-            >
-              Get Started
+        <div className="hidden lg:flex items-center gap-6">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="text-sm font-medium text-foreground/80 hover:text-foreground">
+              {item.label}
             </Link>
-          </div>
+          ))}
         </div>
-      )}
+      </nav>
+      <div className={cn('lg:hidden border-t border-border px-4 py-3', open ? 'block' : 'hidden')}>
+        <div className="flex flex-col gap-3">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="text-sm font-medium text-foreground/80 hover:text-foreground" onClick={() => setOpen(false)}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </header>
   );
 }

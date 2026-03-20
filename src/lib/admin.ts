@@ -1,32 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getTokenFromHeader, verifyToken } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { getTokenFromHeader, verifyToken } from './auth';
 
-export const runtime = 'nodejs';
-
-export function middleware(request: NextRequest) {
-  if (!request.nextUrl.pathname.startsWith('/api/admin')) {
-    return NextResponse.next();
-  }
-
+export function assertAdmin(request: NextRequest): void {
   const adminToken = process.env.ADMIN_TOKEN;
   const authHeader = request.headers.get('authorization');
   const bearerToken = getTokenFromHeader(authHeader);
   const headerToken = request.headers.get('x-admin-token');
 
   if (adminToken && (bearerToken === adminToken || headerToken === adminToken)) {
-    return NextResponse.next();
+    return;
   }
 
   if (bearerToken) {
     try {
       const payload = verifyToken(bearerToken);
       if (payload && payload.role === 'admin') {
-        return NextResponse.next();
+        return;
       }
     } catch (_error) {
-      // ignore
+      // fallthrough to unauthorized
     }
   }
 
-  return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  const error = new Error('Unauthorized');
+  (error as Error & { status?: number }).status = 401;
+  throw error;
 }

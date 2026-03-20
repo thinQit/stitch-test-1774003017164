@@ -1,31 +1,13 @@
 import { PrismaClient } from '@prisma/client';
-import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
-const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
-const prismaClient = !isBuildPhase
-  ? globalForPrisma.prisma ?? new PrismaClient()
-  : null;
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: ['error', 'warn']
+  });
 
-if (!isBuildPhase && process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prismaClient ?? undefined;
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = db;
 }
-
-const mockModel = new Proxy(
-  {},
-  {
-    get: () => async () => []
-  }
-);
-
-const mockDb = new Proxy(
-  {},
-  {
-    get: () => mockModel
-  }
-) as unknown as PrismaClient;
-
-export const db = (isBuildPhase ? mockDb : prismaClient) as PrismaClient;
-
-export default db;

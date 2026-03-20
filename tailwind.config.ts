@@ -4,7 +4,7 @@ const config: Config = {
   content: [
     './src/app/**/*.{ts,tsx}',
     './src/components/**/*.{ts,tsx}',
-    './src/lib/**/*.{ts,tsx}'
+    './src/providers/**/*.{ts,tsx}'
   ],
   theme: {
     extend: {
@@ -12,7 +12,6 @@ const config: Config = {
         primary: 'var(--primary)',
         'primary-hover': 'var(--primary-hover)',
         secondary: 'var(--secondary)',
-        accent: 'var(--accent)',
         background: 'var(--background)',
         foreground: 'var(--foreground)',
         muted: 'var(--muted)',
@@ -21,7 +20,7 @@ const config: Config = {
         success: 'var(--success)'
       },
       borderRadius: {
-        md: 'var(--radius)'
+        lg: 'var(--radius)'
       }
     }
   },

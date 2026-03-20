@@ -1,28 +1,45 @@
 'use client';
 
-import * as React from 'react';
-import clsx from 'clsx';
+import type { ButtonHTMLAttributes } from 'react';
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary';
+type ButtonVariant = 'primary' | 'secondary' | 'outline';
+
+type ButtonSize = 'sm' | 'md' | 'lg';
+
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 };
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', ...props }, ref) => (
+const baseClasses =
+  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50';
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: 'bg-primary text-white hover:bg-primary-hover',
+  secondary: 'bg-secondary text-white hover:bg-secondary/90',
+  outline: 'border border-border text-foreground hover:bg-muted'
+};
+
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'h-9 px-3 text-sm',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-6 text-base'
+};
+
+const cn = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
+
+export default function Button({
+  variant = 'primary',
+  size = 'md',
+  className,
+  type = 'button',
+  ...props
+}: ButtonProps) {
+  return (
     <button
-      ref={ref}
-      className={clsx(
-        'inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
-        variant === 'primary'
-          ? 'bg-primary text-white hover:bg-primary/90'
-          : 'bg-muted text-foreground hover:bg-muted/80',
-        className
-      )}
+      type={type}
+      className={cn(baseClasses, variantClasses[variant], sizeClasses[size], className)}
       {...props}
     />
-  )
-);
-
-Button.displayName = 'Button';
-
-export default Button;
+  );
+}

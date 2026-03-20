@@ -1,15 +1,34 @@
-export interface Feature {
+export type Feature = {
   id: string;
-  title: string;
-  description: string;
-  icon: string;
-  highlightColor: string;
-}
+  title?: string | null;
+  summary?: string | null;
+  icon?: string | null;
+};
 
-export interface PricingTier {
+export type PricingTier = {
   id: string;
-  name: string;
-  monthlyPrice: number;
-  isCustom: boolean;
-  features: string[];
-}
+  name?: string | null;
+  pricePerMonth?: number | null;
+  currency?: string | null;
+  features?: string[] | null;
+  stripePriceId?: string | null;
+  isCustom?: boolean | null;
+};
+
+export type Lead = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  company?: string | null;
+  planInterest?: string | null;
+  createdAt?: string | Date | null;
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  role?: string | null;
+  passwordHash: string;
+  createdAt?: string | Date | null;
+};

@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import db from '@/lib/db';
+import { db } from '@/lib/db';
+import { assertAdmin } from '@/lib/admin';
 
 const schema = z.object({
-  name: z.string().min(1),
-  monthlyPrice: z.number().nonnegative(),
-  isCustom: z.boolean().optional(),
-  features: z.array(z.string().min(1))
+  name: z.string().optional(),
+  pricePerMonth: z.number().nullable().optional(),
+  currency: z.string().optional(),
+  features: z.array(z.string()).optional(),
+  stripePriceId: z.string().optional(),
+  isCustom: z.boolean().optional()
 });
 
-const parseFeatures = (value: string): string[] => {
+const parseFeatures = (value: string | null): string[] => {
+  if (!value) return [];
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === 'string')
-      : [];
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
   } catch (_error) {
     return [];
   }
@@ -23,45 +25,35 @@ const parseFeatures = (value: string): string[] => {
 export async function GET(_request: NextRequest) {
   try {
     const tiers = await db.pricingTier.findMany();
-    const mapped = tiers.map((tier) => ({
-      id: tier.id,
-      name: tier.name,
-      monthlyPrice: tier.monthlyPrice,
-      isCustom: tier.isCustom,
+    const data = tiers.map((tier) => ({
+      ...tier,
       features: parseFeatures(tier.features)
     }));
-
-    return NextResponse.json({ success: true, data: { tiers: mapped } });
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Unable to fetch pricing tiers' }, { status: 500 });
+    return NextResponse.json({ success: true, data });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load tiers';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = schema.parse(body);
-
+    assertAdmin(request);
+    const data = schema.parse(await request.json());
     const tier = await db.pricingTier.create({
       data: {
-        name: parsed.name,
-        monthlyPrice: parsed.monthlyPrice,
-        isCustom: parsed.isCustom ?? false,
-        features: JSON.stringify(parsed.features)
+        name: data.name ?? null,
+        pricePerMonth: data.pricePerMonth ?? null,
+        currency: data.currency ?? null,
+        features: JSON.stringify(data.features ?? []),
+        stripePriceId: data.stripePriceId ?? null,
+        isCustom: data.isCustom ?? false
       }
     });
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: tier.id,
-        name: tier.name,
-        monthlyPrice: tier.monthlyPrice,
-        isCustom: tier.isCustom,
-        features: parsed.features
-      }
-    });
-  } catch (_error) {
-    return NextResponse.json({ success: false, error: 'Unable to create pricing tier' }, { status: 400 });
+    return NextResponse.json({ success: true, data: { ...tier, features: data.features ?? [] } }, { status: 201 });
+  } catch (error: unknown) {
+    const status = (error as Error & { status?: number }).status ?? 400;
+    const message = error instanceof Error ? error.message : 'Invalid request';
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }

@@ -1,28 +1,40 @@
 'use client';
 
-import * as React from 'react';
-import clsx from 'clsx';
+import type { InputHTMLAttributes } from 'react';
+import { useId } from 'react';
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
+  wrapperClassName?: string;
 };
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ label, className, ...props }, ref) => (
-    <label className="flex w-full flex-col gap-2 text-sm">
-      {label && <span className="text-secondary">{label}</span>}
+const cn = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
+
+export default function Input({
+  label,
+  wrapperClassName,
+  className,
+  id,
+  ...props
+}: InputProps) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
+
+  return (
+    <div className={cn('flex flex-col gap-2', wrapperClassName)}>
+      {label && (
+        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+          {label}
+        </label>
+      )}
       <input
-        ref={ref}
-        className={clsx(
-          'w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30',
+        id={inputId}
+        className={cn(
+          'h-11 rounded-md border border-border bg-white px-3 text-sm text-foreground shadow-sm placeholder:text-foreground/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20',
           className
         )}
         {...props}
       />
-    </label>
-  )
-);
-
-Input.displayName = 'Input';
-
-export default Input;
+    </div>
+  );
+}
