@@ -1,29 +1,22 @@
-export type FeatureCard = {
-  id: string;
-  title: string;
-  description: string;
-  icon?: string;
-};
-
-export type Project = {
+export interface SubscriptionPlan {
   id: string;
   name: string;
-  description?: string;
-  url?: string;
-  tags?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-};
+  priceMonthly?: number | null;
+  billingInterval?: string | null;
+  features?: string[] | string | null;
+  isCustom: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
 
-export type User = {
+export interface Lead {
   id: string;
   name: string;
   email: string;
-  image?: string | null;
-  role?: "admin" | "user";
-};
-
-export type AuthState = {
-  user: User | null;
-  isLoading: boolean;
-};
+  company?: string | null;
+  message?: string | null;
+  interestTier?: string | null;
+  contacted: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}

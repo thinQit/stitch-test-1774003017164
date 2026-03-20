@@ -7,52 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String?
-  passwordHash   String
-  role           String   @default("user")
-  subscriptionId String?
-  projects       Project[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  name            String
+  priceMonthly    Int?
+  billingInterval String?
+  features        String?
+  isCustom        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-model Team {
-  id        String   @id @default(cuid())
-  name      String
-  members   String   @default("[]")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Project {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  ownerId     String
-  status      String   @default("active")
-  dueDate     String?
-  owner       User     @relation(fields: [ownerId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Subscription {
+model Lead {
   id           String   @id @default(cuid())
-  tier         String
-  priceMonthly Float
-  customerId   String?
+  name         String
+  email        String
+  company      String?
+  message      String?
+  interestTier String?
+  contacted    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
-model FeatureCard {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  icon        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model SiteSettings {
+  id             String   @id @default(cuid())
+  primaryColor   String?
+  secondaryColor String?
+  tertiaryColor  String?
+  heroTitle      String?
+  heroSubtitle   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
 }

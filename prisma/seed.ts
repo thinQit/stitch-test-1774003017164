@@ -4,98 +4,102 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash('Password123!', 10);
+  await prisma.lead.deleteMany();
+  await prisma.subscriptionPlan.deleteMany();
+  await prisma.siteSettings.deleteMany();
+  await prisma.user.deleteMany();
 
-  const starterSubscription = await prisma.subscription.create({
+  const adminPassword = await bcrypt.hash('Password123!', 10);
+
+  await prisma.user.create({
     data: {
-      tier: 'starter',
+      email: 'admin@projectflow.ai',
+      name: 'ProjectFlow Admin',
+      password: adminPassword
+    }
+  });
+
+  const starterFeatures = JSON.stringify([
+    'Up to 10 teammates',
+    'AI scheduling for 3 projects',
+    'Basic reporting'
+  ]);
+  const proFeatures = JSON.stringify([
+    'Unlimited teammates',
+    'Automated reporting',
+    'Advanced team insights'
+  ]);
+  const enterpriseFeatures = JSON.stringify([
+    'Custom workflows',
+    'Dedicated CSM',
+    'Security & compliance reviews'
+  ]);
+
+  await prisma.subscriptionPlan.create({
+    data: {
+      name: 'Starter',
       priceMonthly: 29,
-      customerId: 'cust_starter_001'
+      billingInterval: 'month',
+      features: starterFeatures,
+      isCustom: false
     }
   });
 
-  const proSubscription = await prisma.subscription.create({
+  await prisma.subscriptionPlan.create({
     data: {
-      tier: 'pro',
+      name: 'Pro',
       priceMonthly: 79,
-      customerId: 'cust_pro_001'
+      billingInterval: 'month',
+      features: proFeatures,
+      isCustom: false
     }
   });
 
-  const userA = await prisma.user.create({
+  await prisma.subscriptionPlan.create({
     data: {
-      email: 'alex@projectflow.com',
-      name: 'Alex Morgan',
-      passwordHash,
-      role: 'admin',
-      subscriptionId: starterSubscription.id
+      name: 'Enterprise',
+      priceMonthly: null,
+      billingInterval: 'month',
+      features: enterpriseFeatures,
+      isCustom: true
     }
   });
 
-  const userB = await prisma.user.create({
+  await prisma.siteSettings.create({
     data: {
-      email: 'jamie@projectflow.com',
-      name: 'Jamie Rivera',
-      passwordHash,
-      role: 'user',
-      subscriptionId: proSubscription.id
+      primaryColor: '#7c3aed',
+      secondaryColor: '#3b82f6',
+      tertiaryColor: '#06b6d4',
+      heroTitle: 'AI-powered project management that keeps your team ahead.',
+      heroSubtitle: 'Smart scheduling, automated reporting, and team insights in one hub.'
     }
   });
 
-  await prisma.team.create({
+  await prisma.lead.create({
     data: {
-      name: 'Product Strategy',
-      members: JSON.stringify([userA.id, userB.id])
+      name: 'Jordan Lee',
+      email: 'jordan@acme.io',
+      company: 'Acme Inc',
+      message: 'Interested in a Pro plan demo for our delivery team.',
+      interestTier: 'Pro',
+      contacted: false
     }
   });
 
-  await prisma.featureCard.create({
+  await prisma.lead.create({
     data: {
-      title: 'Smart Scheduling',
-      description: 'AI builds sprint plans and adapts schedules based on real-time progress.',
-      icon: '⚡'
-    }
-  });
-
-  await prisma.featureCard.create({
-    data: {
-      title: 'Automated Reporting',
-      description: 'Generate executive-ready reports with progress, blockers, and risks.',
-      icon: '📊'
-    }
-  });
-
-  await prisma.featureCard.create({
-    data: {
-      title: 'Team Insights',
-      description: 'Understand capacity, velocity, and focus areas across teams instantly.',
-      icon: '🧠'
-    }
-  });
-
-  await prisma.project.create({
-    data: {
-      title: 'AI Roadmap Refresh',
-      description: 'Align Q3 roadmap with AI-assisted delivery milestones.',
-      ownerId: userA.id,
-      status: 'active',
-      dueDate: '2024-11-15'
-    }
-  });
-
-  await prisma.project.create({
-    data: {
-      title: 'Customer Insights Pipeline',
-      description: 'Implement automated reporting for customer feedback loops.',
-      ownerId: userB.id,
-      status: 'active',
-      dueDate: '2024-12-05'
+      name: 'Sam Patel',
+      email: 'sam@northwind.co',
+      company: 'Northwind',
+      message: 'We need enterprise security support.',
+      interestTier: 'Enterprise',
+      contacted: true
     }
   });
 }
 
 main()
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error(error);
     process.exit(1);
   })

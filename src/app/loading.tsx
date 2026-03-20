@@ -1,7 +1,7 @@
-export default function Loading() {
+export default function LoadingPage() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
-      <p className="text-sm text-secondary">Loading...</p>
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
     </div>
   );
 }

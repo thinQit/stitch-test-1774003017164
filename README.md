@@ -1,48 +1,39 @@
 # ProjectFlow
 
-ProjectFlow is a full-stack Next.js + TypeScript SaaS landing site and basic dashboard for an AI-powered project management tool. It includes a marketing homepage, pricing, auth stubs, and projects CRUD APIs.
+ProjectFlow is a full-stack Next.js + TypeScript landing site and light SaaS backend for an AI-powered project management product. It includes a modern Tailwind CSS UI, gradient hero, feature cards, pricing tiers, lead capture, and an admin leads dashboard.
 
 ## Features
-- Gradient hero landing page with features, pricing, subscribe and contact forms
-- Auth stubs with JWT + bcryptjs
-- Protected dashboard and projects CRUD
-- Tailwind CSS + TypeScript scaffolding
+- Gradient hero with CTA
+- Feature cards (Smart Scheduling, Automated Reporting, Team Insights)
+- 3-tier pricing (Starter, Pro, Enterprise)
+- Lead capture form with tier selection
+- Admin leads dashboard with filtering and contacted toggle
+- API endpoints for health, features, pricing, leads, and subscription intent
 
-## Quickstart
-```bash
-npm install
-npx prisma generate
-npm run dev
-```
-
-## Environment Variables
-Copy `.env.example` to `.env` and update values:
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `NEXT_PUBLIC_BASE_URL`
-
-## Scripts
-- `npm run dev` - start development server
-- `npm run build` - build (includes prisma generate)
-- `npm run start` - start production server
-- `npm run lint` - run ESLint
-- `npm run test` - run Jest
+## Setup
+1. Copy `.env.example` to `.env` and fill in environment variables.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Generate Prisma client:
+   ```bash
+   npx prisma generate
+   ```
+4. Run the dev server:
+   ```bash
+   npm run dev
+   ```
 
 ## API Endpoints
 - `GET /api/health`
-- `POST /api/subscribe`
-- `POST /api/contact`
 - `GET /api/features`
 - `GET /api/pricing`
-- `POST /api/auth/signup`
-- `POST /api/auth/signin`
+- `POST /api/leads`
+- `POST /api/subscribe`
+- `POST /api/auth/login`
+- `POST /api/auth/register`
 - `GET /api/auth/me`
-- `GET /api/projects`
-- `POST /api/projects`
-- `GET /api/projects/:id`
-- `PUT /api/projects/:id`
-- `DELETE /api/projects/:id`
 
-## Notes
-- Prisma uses SQLite by default for development (`prisma/dev.db`).
-- To swap to Postgres, update `DATABASE_URL` and run migrations.
+## Admin
+The admin leads dashboard is available at `/admin/leads`. Authenticate using the login API or provide the `ADMIN_TOKEN` in the `x-admin-token` header for protected requests.

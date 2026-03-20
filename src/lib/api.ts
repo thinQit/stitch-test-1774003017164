@@ -1,26 +1,22 @@
-export type ApiOptions = RequestInit & {
-  baseUrl?: string;
-};
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
-const defaultBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-
-async function request<T>(
-  url: string,
-  options: ApiOptions = {}
-): Promise<T> {
-  const { baseUrl = defaultBaseUrl, headers, ...rest } = options;
-  const response = await fetch(`${baseUrl}${url}`, {
-    ...rest,
+async function request<T>(url: string, options: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...options,
     headers: {
-      "Content-Type": "application/json",
-      ...(headers ?? {}),
-    },
-    cache: rest.cache ?? "no-store",
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {})
+    }
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || "Request failed");
+    throw new Error(`Request failed: ${response.status}`);
   }
 
   if (response.status === 204) {
@@ -31,26 +27,28 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(url: string, options?: ApiOptions) =>
-    request<T>(url, { ...options, method: "GET" }),
-  post: <T, B = unknown>(url: string, body?: B, options?: ApiOptions) =>
-    request<T>(url, {
-      ...options,
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  put: <T, B = unknown>(url: string, body?: B, options?: ApiOptions) =>
-    request<T>(url, {
-      ...options,
-      method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  patch: <T, B = unknown>(url: string, body?: B, options?: ApiOptions) =>
-    request<T>(url, {
-      ...options,
-      method: "PATCH",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  delete: <T>(url: string, options?: ApiOptions) =>
-    request<T>(url, { ...options, method: "DELETE" }),
+  get<T>(url: string) {
+    return request<T>(url, { method: 'GET' });
+  },
+  post<T>(url: string, body?: JsonValue) {
+    return request<T>(url, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  put<T>(url: string, body?: JsonValue) {
+    return request<T>(url, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  patch<T>(url: string, body?: JsonValue) {
+    return request<T>(url, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  delete<T>(url: string) {
+    return request<T>(url, { method: 'DELETE' });
+  }
 };

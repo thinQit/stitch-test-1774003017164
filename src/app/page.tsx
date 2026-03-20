@@ -1,319 +1,251 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Spinner } from '@/components/ui/Spinner';
+import FeatureCard from '@/components/marketing/FeatureCard';
+import PricingCard from '@/components/marketing/PricingCard';
+import LeadForm from '@/components/marketing/LeadForm';
+import Modal from '@/components/ui/Modal';
+import Spinner from '@/components/ui/Spinner';
 import { api } from '@/lib/api';
-import type { FeatureCard } from '@/types';
+import type { SubscriptionPlan } from '@/types';
 
-type SubscribeResponse = { success: boolean; message?: string };
-
-type ContactResponse = { success: boolean; message?: string };
-
-type PricingTier = {
+interface Feature {
   id: string;
-  name: string;
-  priceMonthly: number | 'custom';
-  benefits: string[];
-};
-
-type PricingResponse = { tiers: PricingTier[] };
+  title: string;
+  description: string;
+  iconName: string;
+}
 
 export default function HomePage() {
-  const [subscribeState, setSubscribeState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [contactState, setContactState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [featuresState, setFeaturesState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [pricingState, setPricingState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [features, setFeatures] = useState<FeatureCard[]>([]);
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
-  const [subscribeEmail, setSubscribeEmail] = useState('');
-  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
+  const [features, setFeatures] = useState<Feature[]>([]);
+  const [pricing, setPricing] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   useEffect(() => {
-    const loadFeatures = async () => {
+    const load = async () => {
       try {
-        const data = await api.get<FeatureCard[]>('/api/features');
-        const items = Array.isArray(data) ? data : [];
-        setFeatures(items);
-        setFeaturesState('ready');
+        const [featureData, pricingData] = await Promise.all([
+          api.get<Feature[]>('/api/features'),
+          api.get<SubscriptionPlan[]>('/api/pricing')
+        ]);
+        setFeatures(featureData ?? []);
+        setPricing(pricingData ?? []);
       } catch (_error) {
-        setFeaturesState('error');
+        setError('Unable to load ProjectFlow data. Please try again soon.');
+      } finally {
+        setLoading(false);
       }
     };
-
-    const loadPricing = async () => {
-      try {
-        const data = await api.get<PricingResponse>('/api/pricing');
-        const items = data?.tiers ?? [];
-        setTiers(items);
-        setPricingState('ready');
-      } catch (_error) {
-        setPricingState('error');
-      }
-    };
-
-    void loadFeatures();
-    void loadPricing();
+    load();
   }, []);
 
-  const handleSubscribe = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubscribeState('loading');
-    try {
-      const response = await api.post<SubscribeResponse>('/api/subscribe', { email: subscribeEmail, plan: 'starter' });
-      if (response?.success) {
-        setSubscribeState('success');
-        setSubscribeEmail('');
-      } else {
-        setSubscribeState('error');
-      }
-    } catch (_error) {
-      setSubscribeState('error');
-    }
-  };
-
-  const handleContact = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setContactState('loading');
-    try {
-      const response = await api.post<ContactResponse>('/api/contact', contactForm);
-      if (response?.success) {
-        setContactState('success');
-        setContactForm({ name: '', email: '', message: '' });
-      } else {
-        setContactState('error');
-      }
-    } catch (_error) {
-      setContactState('error');
-    }
-  };
-
   return (
-    <main>
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 py-20 text-white">
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 md:grid-cols-2 md:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-white/80">AI-powered project management</p>
-            <h1 className="mt-4 text-4xl font-bold leading-tight md:text-5xl">
-              ProjectFlow keeps teams aligned, automated, and ahead of schedule.
+    <main className="flex flex-col">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-hover to-[#06b6d4] py-20 text-white">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-6 lg:flex-row lg:justify-between">
+          <div className="flex max-w-xl flex-col gap-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">
+              ProjectFlow
+            </p>
+            <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
+              AI-powered project management that keeps your team ahead of every deadline.
             </h1>
-            <p className="mt-4 text-base text-white/90">
-              Automate planning, reporting, and team insights with a single workspace designed for modern product teams.
-              ProjectFlow turns roadmap chaos into clear execution.
+            <p className="text-lg text-white/90">
+              Orchestrate smart scheduling, automated reporting, and real-time team insights
+              from one modern workspace built for fast-moving product teams.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup" className="inline-flex">
-                <Button size="lg">Get started</Button>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <Link
+                href="#pricing"
+                className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary-hover px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:opacity-90"
+              >
+                Start 14-day trial
               </Link>
-              <Link href="#contact" className="inline-flex">
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
-                  Contact sales
-                </Button>
+              <Link
+                href="#contact"
+                className="inline-flex items-center justify-center rounded-lg border border-white/60 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10"
+              >
+                Book a demo
               </Link>
             </div>
           </div>
-          <div className="relative">
-            <Image
-              src="/images/hero.jpg"
-              alt="ProjectFlow dashboard preview"
-              width={1200}
-              height={675}
-              className="rounded-2xl object-cover shadow-2xl"
-            />
-            <div className="absolute inset-0 rounded-2xl bg-black/10" aria-hidden="true" />
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-[1.1fr_0.9fr] md:items-center" id="features">
-        <div>
-          <p className="text-sm font-semibold uppercase text-primary">Features</p>
-          <h2 className="mt-2 text-3xl font-bold">Everything your team needs to ship faster</h2>
-          <p className="mt-3 text-secondary">
-            ProjectFlow brings AI-driven scheduling, automated reporting, and team insights together in one workspace.
-          </p>
-          {featuresState === 'loading' && (
-            <div className="mt-6 flex items-center gap-2 text-sm text-secondary">
-              <Spinner /> Loading features...
-            </div>
-          )}
-          {featuresState === 'error' && <p className="mt-6 text-sm text-error">Unable to load features right now.</p>}
-          {featuresState === 'ready' && features.length === 0 && (
-            <p className="mt-6 text-sm text-secondary">No features available yet.</p>
-          )}
-          <div className="mt-8 grid gap-6 md:grid-cols-3">
-            {features.map((feature) => (
-              <Card key={feature.id}>
-                <CardHeader>
-                  <div className="text-3xl">{feature.icon ?? '✨'}</div>
-                  <h3 className="text-xl font-semibold text-foreground">{feature.title}</h3>
-                </CardHeader>
-                <CardContent>{feature.description}</CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-        <div className="relative">
-          <Image
-            src="/images/feature.jpg"
-            alt="Team collaborating with ProjectFlow"
-            width={1200}
-            height={675}
-            className="rounded-2xl object-cover shadow-lg"
-          />
-        </div>
-      </section>
-
-      <section className="bg-muted py-16" id="pricing">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase text-primary">Pricing</p>
-            <h2 className="mt-2 text-3xl font-bold">Choose the plan that fits your team</h2>
-            <p className="mt-3 text-secondary">Flexible tiers for startups to enterprise portfolios.</p>
-          </div>
-          {pricingState === 'loading' && (
-            <div className="mt-8 flex items-center justify-center gap-2 text-sm text-secondary">
-              <Spinner /> Loading pricing...
-            </div>
-          )}
-          {pricingState === 'error' && <p className="mt-8 text-center text-sm text-error">Unable to load pricing.</p>}
-          {pricingState === 'ready' && tiers.length === 0 && (
-            <p className="mt-8 text-center text-sm text-secondary">Pricing tiers will be available soon.</p>
-          )}
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {tiers.map((tier) => (
-              <Card key={tier.id} className="flex flex-col">
-                <CardHeader>
-                  <h3 className="text-xl font-semibold text-foreground">{tier.name}</h3>
-                  <p className="text-3xl font-bold">
-                    {tier.priceMonthly === 'custom' ? 'Custom' : `$${tier.priceMonthly}/mo`}
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <ul className="list-disc space-y-2 pl-4">
-                    {tier.benefits.map((benefit) => (
-                      <li key={benefit}>{benefit}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter className="mt-auto">
-                  <Link href={tier.id === 'enterprise' ? '#contact' : '/signup'}>
-                    <Button variant={tier.id === 'pro' ? 'primary' : 'outline'}>
-                      {tier.id === 'enterprise' ? 'Contact sales' : 'Get started'}
-                    </Button>
-                  </Link>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-16" id="subscribe">
-        <div className="grid gap-8 md:grid-cols-2 md:items-center">
-          <div>
-            <h2 className="text-2xl font-bold">Stay ahead with ProjectFlow insights</h2>
-            <p className="mt-3 text-secondary">
-              Get product updates, AI workflow playbooks, and early access to new features.
-            </p>
-          </div>
-          <form onSubmit={handleSubscribe} className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              type="email"
-              required
-              aria-label="Email address"
-              placeholder="you@company.com"
-              value={subscribeEmail}
-              onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSubscribeEmail(event.target.value)}
-            />
-            <Button type="submit" disabled={subscribeState === 'loading'}>
-              {subscribeState === 'loading' ? 'Submitting...' : 'Subscribe'}
-            </Button>
-          </form>
-          {subscribeState === 'success' && <p className="text-sm text-success">Thanks for joining! Check your inbox soon.</p>}
-          {subscribeState === 'error' && <p className="text-sm text-error">Something went wrong. Try again shortly.</p>}
-        </div>
-      </section>
-
-      <section className="bg-muted py-16" id="contact">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 md:grid-cols-2 md:items-center">
-          <div>
-            <h2 className="text-3xl font-bold">Talk with our team</h2>
-            <p className="mt-3 text-secondary">Tell us about your roadmap. We will help tailor ProjectFlow for you.</p>
-            <div className="mt-6">
+          <div className="relative w-full max-w-lg">
+            <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur">
               <Image
-                src="/images/cta.jpg"
-                alt="ProjectFlow team support"
+                src="/images/hero.jpg"
+                alt="ProjectFlow dashboard preview"
                 width={1200}
                 height={675}
-                className="rounded-2xl object-cover shadow-lg"
+                className="h-auto w-full object-cover"
+                priority
               />
             </div>
           </div>
-          <form onSubmit={handleContact} className="grid gap-4 rounded-lg border border-border bg-white p-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input
-                label="Name"
-                required
-                value={contactForm.name}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setContactForm({ ...contactForm, name: event.target.value })
-                }
-              />
-              <Input
-                label="Email"
-                type="email"
-                required
-                value={contactForm.email}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                  setContactForm({ ...contactForm, email: event.target.value })
-                }
-              />
-            </div>
-            <label className="block text-sm text-foreground">
-              <span className="mb-1 block font-medium">Message</span>
-              <textarea
-                required
-                className="min-h-[120px] w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                value={contactForm.message}
-                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setContactForm({ ...contactForm, message: event.target.value })
-                }
-              />
-            </label>
-            <Button type="submit" disabled={contactState === 'loading'}>
-              {contactState === 'loading' ? 'Sending...' : 'Send message'}
-            </Button>
-            {contactState === 'success' && <p className="text-sm text-success">Message sent. We will reply soon.</p>}
-            {contactState === 'error' && <p className="text-sm text-error">Unable to send. Please retry.</p>}
-          </form>
         </div>
       </section>
 
-      <footer className="border-t border-border bg-white py-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 text-sm text-secondary md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="font-semibold text-foreground">ProjectFlow</p>
-            <p>AI-powered project management for modern teams.</p>
+      <section className="mx-auto w-full max-w-6xl px-6 py-20">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-3xl font-bold">Predict, plan, and deliver with confidence</h2>
+            <p className="text-base text-secondary">
+              ProjectFlow connects your roadmap, execution, and stakeholder updates in one
+              AI-augmented hub. The result: calmer launches and happier teams.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-secondary">
+              <li>• Smart prioritization across cross-functional workstreams.</li>
+              <li>• Live workload balance with sentiment tracking.</li>
+              <li>• Automated status updates that build executive trust.</li>
+            </ul>
           </div>
-          <div className="flex gap-4">
+          <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+            <Image
+              src="/images/feature.jpg"
+              alt="Team collaboration analytics"
+              width={1200}
+              height={675}
+              className="h-auto w-full object-cover"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 pb-20">
+        <div className="mb-10 flex flex-col gap-3 text-center">
+          <h2 className="text-3xl font-bold">Built for smart, strategic delivery</h2>
+          <p className="text-base text-secondary">
+            ProjectFlow bundles AI automation with clear team visibility.
+          </p>
+        </div>
+        {loading ? (
+          <div className="flex justify-center">
+            <Spinner />
+          </div>
+        ) : error ? (
+          <div className="rounded-lg border border-error bg-red-50 p-4 text-center text-error">
+            {error}
+          </div>
+        ) : features.length === 0 ? (
+          <div className="rounded-lg border border-border bg-white p-6 text-center text-secondary">
+            No feature data available yet.
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3">
+            {features.map((feature) => (
+              <FeatureCard key={feature.id} feature={feature} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section id="pricing" className="bg-muted py-20">
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-bold">Pricing built for growing teams</h2>
+            <p className="mt-3 text-secondary">
+              Start with a 14-day trial. Upgrade to unlock advanced automation and insights.
+            </p>
+          </div>
+          {loading ? (
+            <div className="flex justify-center">
+              <Spinner />
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-error bg-red-50 p-4 text-center text-error">
+              {error}
+            </div>
+          ) : pricing.length === 0 ? (
+            <div className="rounded-lg border border-border bg-white p-6 text-center text-secondary">
+              Pricing details are coming soon.
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {pricing.map((plan) => (
+                <PricingCard
+                  key={plan.id}
+                  plan={plan}
+                  onEnterprise={() => setEnterpriseOpen(true)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="bg-white py-20">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-3xl font-bold">Align leaders with one click</h2>
+            <p className="text-secondary">
+              Deliver leadership-ready updates on demand and keep roadmap changes crystal clear.
+              ProjectFlow turns progress into an executive-ready narrative.
+            </p>
+            <Link
+              href="#contact"
+              className="inline-flex w-fit items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover"
+            >
+              Book an executive demo
+            </Link>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
+            <Image
+              src="/images/cta.jpg"
+              alt="Executive overview experience"
+              width={1200}
+              height={675}
+              className="h-auto w-full object-cover"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" className="mx-auto w-full max-w-6xl px-6 py-20">
+        <div className="grid gap-10 lg:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-3xl font-bold">Talk to our product experts</h2>
+            <p className="text-secondary">
+              Tell us about your team and we will tailor a ProjectFlow demo to your roadmap.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-secondary">
+              <li>• AI schedule optimization for cross-team dependency mapping.</li>
+              <li>• Automated status reports for exec stakeholders.</li>
+              <li>• Team sentiment and workload insights.</li>
+            </ul>
+          </div>
+          <LeadForm defaultTier="Pro" />
+        </div>
+      </section>
+
+      <footer className="border-t border-border bg-white py-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-6 px-6 md:flex-row">
+          <div>
+            <p className="text-lg font-semibold">ProjectFlow</p>
+            <p className="text-sm text-secondary">
+              AI-powered project management for modern product teams.
+            </p>
+          </div>
+          <div className="flex gap-6 text-sm text-secondary">
             <Link href="/pricing" className="hover:text-primary">
               Pricing
             </Link>
-            <Link href="/signin" className="hover:text-primary">
-              Sign in
+            <Link href="/admin/leads" className="hover:text-primary">
+              Admin
             </Link>
-            <Link href="/signup" className="hover:text-primary">
-              Get started
-            </Link>
+            <a href="#contact" className="hover:text-primary">
+              Contact
+            </a>
           </div>
-          <p>© {new Date().getFullYear()} ProjectFlow. All rights reserved.</p>
+          <p className="text-xs text-secondary">© 2026 ProjectFlow. All rights reserved.</p>
         </div>
       </footer>
+
+      <Modal isOpen={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} title="Enterprise Contact">
+        <LeadForm defaultTier="Enterprise" onSuccess={() => setEnterpriseOpen(false)} />
+      </Modal>
     </main>
   );
 }

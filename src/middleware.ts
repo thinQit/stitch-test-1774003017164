@@ -3,42 +3,33 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromHeader, verifyToken } from '@/lib/auth';
 
-function extractToken(request: NextRequest): string | null {
-  const headerToken = getTokenFromHeader(request.headers.get('authorization'));
-  const cookieToken = request.cookies.get('token')?.value;
-  return headerToken || cookieToken || null;
-}
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isDashboard = pathname.startsWith('/dashboard');
-  const isProtectedApi = pathname.startsWith('/api/projects');
-
-  if (!isDashboard && !isProtectedApi) return NextResponse.next();
-
-  const token = extractToken(request);
-  if (!token) {
-    if (isProtectedApi) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = '/signin';
-    return NextResponse.redirect(url);
+function isAuthorized(request: NextRequest): boolean {
+  const adminToken = request.headers.get('x-admin-token');
+  if (adminToken && process.env.ADMIN_TOKEN && adminToken === process.env.ADMIN_TOKEN) {
+    return true;
   }
+
+  const headerToken = getTokenFromHeader(request.headers.get('authorization'));
+  const cookieToken = request.cookies.get('pf_admin')?.value;
+  const token = headerToken ?? cookieToken;
+  if (!token) return false;
 
   try {
     verifyToken(token);
-    return NextResponse.next();
+    return true;
   } catch (_error) {
-    if (isProtectedApi) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = '/signin';
-    return NextResponse.redirect(url);
+    return false;
   }
 }
 
+export function middleware(request: NextRequest) {
+  if (isAuthorized(request)) {
+    return NextResponse.next();
+  }
+
+  return NextResponse.redirect(new URL('/', request.url));
+}
+
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/projects/:path*']
+  matcher: ['/admin/:path*']
 };

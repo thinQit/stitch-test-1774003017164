@@ -1,125 +1,97 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Spinner } from '@/components/ui/Spinner';
+import PricingCard from '@/components/marketing/PricingCard';
+import Modal from '@/components/ui/Modal';
+import Spinner from '@/components/ui/Spinner';
+import LeadForm from '@/components/marketing/LeadForm';
 import { api } from '@/lib/api';
-
-type PricingTier = {
-  id: string;
-  name: string;
-  priceMonthly: number | 'custom';
-  benefits: string[];
-};
-
-type PricingResponse = { tiers: PricingTier[] };
+import type { SubscriptionPlan } from '@/types';
 
 export default function PricingPage() {
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [pricing, setPricing] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   useEffect(() => {
-    const loadPricing = async () => {
+    const load = async () => {
       try {
-        const data = await api.get<PricingResponse>('/api/pricing');
-        setTiers(data?.tiers ?? []);
-        setStatus('ready');
+        const pricingData = await api.get<SubscriptionPlan[]>('/api/pricing');
+        setPricing(pricingData ?? []);
       } catch (_error) {
-        setStatus('error');
+        setError('Unable to load pricing. Please try again later.');
+      } finally {
+        setLoading(false);
       }
     };
-
-    void loadPricing();
+    load();
   }, []);
 
   return (
-    <main>
-      <section className="bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 py-16 text-white">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 md:grid-cols-2 md:items-center">
-          <div>
-            <h1 className="text-4xl font-bold">Pricing built for every stage</h1>
-            <p className="mt-3 text-white/90">
-              From early-stage teams to global portfolios, ProjectFlow scales with you and keeps roadmaps on track.
-            </p>
+    <main className="min-h-screen bg-muted py-16">
+      <div className="mx-auto w-full max-w-6xl px-6">
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-bold">Choose the plan that fits your delivery team</h1>
+          <p className="mt-4 text-secondary">
+            Unlock AI scheduling, automated reporting, and team insights with ProjectFlow.
+          </p>
+        </div>
+        {loading ? (
+          <div className="flex justify-center">
+            <Spinner />
           </div>
-          <Image
-            src="/images/hero.jpg"
-            alt="ProjectFlow pricing overview"
-            width={1200}
-            height={675}
-            className="rounded-2xl object-cover shadow-2xl"
-          />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="text-center">
-          <p className="text-sm font-semibold uppercase text-primary">Plans</p>
-          <h2 className="mt-2 text-3xl font-bold">Choose the plan that fits your team</h2>
-          <p className="mt-3 text-secondary">Every tier includes AI scheduling, reporting, and team insights.</p>
-        </div>
-
-        {status === 'loading' && (
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-secondary">
-            <Spinner /> Loading pricing...
+        ) : error ? (
+          <div className="rounded-lg border border-error bg-red-50 p-4 text-center text-error">
+            {error}
+          </div>
+        ) : pricing.length === 0 ? (
+          <div className="rounded-lg border border-border bg-white p-6 text-center text-secondary">
+            Pricing tiers are being finalized.
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-3">
+            {pricing.map((plan) => (
+              <PricingCard
+                key={plan.id}
+                plan={plan}
+                onEnterprise={() => setEnterpriseOpen(true)}
+              />
+            ))}
           </div>
         )}
-        {status === 'error' && <p className="mt-8 text-center text-sm text-error">Unable to load pricing tiers.</p>}
-        {status === 'ready' && tiers.length === 0 && (
-          <p className="mt-8 text-center text-sm text-secondary">Pricing will be available soon.</p>
-        )}
+      </div>
 
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {tiers.map((tier) => (
-            <Card key={tier.id} className="flex flex-col">
-              <CardHeader>
-                <h3 className="text-xl font-semibold text-foreground">{tier.name}</h3>
-                <p className="text-3xl font-bold">
-                  {tier.priceMonthly === 'custom' ? 'Custom' : `$${tier.priceMonthly}/mo`}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc space-y-2 pl-4 text-secondary">
-                  {tier.benefits.map((benefit) => (
-                    <li key={benefit}>{benefit}</li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter className="mt-auto">
-                <Link href={tier.id === 'enterprise' ? '/#contact' : '/signup'}>
-                  <Button variant={tier.id === 'pro' ? 'primary' : 'outline'}>
-                    {tier.id === 'enterprise' ? 'Contact sales' : 'Get started'}
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-muted py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
-          <div>
-            <h2 className="text-3xl font-bold">Need a custom rollout?</h2>
-            <p className="mt-3 text-secondary">
-              Our enterprise team helps you design a rollout plan, integrate tooling, and launch with full support.
-            </p>
-            <Link href="/#contact" className="mt-6 inline-flex">
-              <Button>Talk to sales</Button>
-            </Link>
-          </div>
+      <section className="mx-auto mt-16 grid w-full max-w-6xl gap-10 px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
           <Image
             src="/images/cta.jpg"
-            alt="ProjectFlow enterprise support"
+            alt="ProjectFlow executive insights"
             width={1200}
             height={675}
-            className="rounded-2xl object-cover shadow-lg"
+            className="h-auto w-full object-cover"
           />
         </div>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-3xl font-bold">Need a tailored rollout?</h2>
+          <p className="text-secondary">
+            We support enterprise data residency, custom workflows, and dedicated success
+            enablement. Tell us about your team and we will craft the right plan.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEnterpriseOpen(true)}
+            className="inline-flex w-fit items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary-hover"
+          >
+            Contact sales
+          </button>
+        </div>
       </section>
+
+      <Modal isOpen={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} title="Enterprise Contact">
+        <LeadForm defaultTier="Enterprise" onSuccess={() => setEnterpriseOpen(false)} />
+      </Modal>
     </main>
   );
 }
